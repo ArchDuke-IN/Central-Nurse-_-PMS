@@ -11,6 +11,7 @@ Thumbs.db
 # Local runtime output
 *.log
 coverage/
+.playwright-mcp/
 
 # Secrets and local configuration
 .env
