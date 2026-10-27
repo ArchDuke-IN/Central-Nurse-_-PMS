@@ -1,0 +1,239 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1020 700" width="1020" height="700" font-family="Segoe UI, Arial, sans-serif">
+  <title>Entity-relationship diagram for the patient monitoring system relational schema</title>
+  <desc>Sixteen tables. Patients and staff feed admissions and vitals. Beds own instruments and receive bed assignments. Alerts reference beds and patients and are acknowledged by staff through alarm acknowledgements. Consumables are consumed per admission and generate billing events. A sync outbox carries changes to the document read model.</desc>
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/>
+    </marker>
+    <style>
+      .e   { fill:#ffffff; stroke:#334155; stroke-width:1.6; }
+      .core{ fill:#f0fdf4; stroke:#15803d; stroke-width:2; }
+      .int { fill:#eff6ff; stroke:#1d4ed8; stroke-width:1.6; }
+      .ref { fill:#f8fafc; stroke:#64748b; stroke-width:1.4; }
+      .n   { font-size:12.5px; font-weight:700; fill:#0f172a; }
+      .c   { font-size:10px; fill:#334155; font-family:Consolas, monospace; }
+      .pk  { font-size:10px; fill:#15803d; font-family:Consolas, monospace; font-weight:700; }
+      .fk  { font-size:10px; fill:#1d4ed8; font-family:Consolas, monospace; }
+      .cn  { font-size:10px; fill:#64748b; font-family:Consolas, monospace; }
+      .rel { font-size:10px; fill:#475569; font-style:italic; }
+      .hd  { font-size:12px; fill:#64748b; font-weight:700; letter-spacing:.05em; }
+      .lk  { stroke:#475569; stroke-width:1.3; fill:none; marker-end:url(#ar); }
+    </style>
+  </defs>
+
+  <rect width="1020" height="700" fill="#ffffff"/>
+
+  <!-- ============ REFERENCE ============ -->
+  <text class="hd" x="24" y="26">REFERENCE</text>
+  <g>
+    <rect class="ref" x="20" y="36" width="196" height="76"/>
+    <text class="n" x="30" y="54">parameters</text>
+    <text class="pk" x="30" y="70">PK code</text>
+    <text class="c"  x="30" y="84">display · unit_ucum</text>
+    <text class="c"  x="30" y="98">min_plausible · max_plausible</text>
+    <text class="cn" x="30" y="110">is_derived</text>
+  </g>
+
+  <!-- ============ PEOPLE ============ -->
+  <text class="hd" x="24" y="150">PEOPLE</text>
+  <g>
+    <rect class="core" x="20" y="160" width="196" height="118"/>
+    <text class="n"   x="30" y="178">patients</text>
+    <text class="pk"  x="30" y="196">PK id</text>
+    <text class="c"   x="30" y="210">mrn (unique) · given_name</text>
+    <text class="c"   x="30" y="224">family_name · gender · dob</text>
+    <text class="cn"  x="30" y="238">abha_number_encrypted</text>
+    <text class="cn"  x="30" y="252">abha_address_encrypted</text>
+    <text class="cn"  x="30" y="266">CHECK: ciphertext envelope only</text>
+  </g>
+  <g>
+    <rect class="core" x="20" y="316" width="196" height="104"/>
+    <text class="n"  x="30" y="334">staff</text>
+    <text class="pk" x="30" y="352">PK id</text>
+    <text class="c"  x="30" y="366">registration_no (unique)</text>
+    <text class="c"  x="30" y="380">given_name · family_name</text>
+    <text class="c"  x="30" y="394">role · password_hash</text>
+    <text class="cn" x="30" y="408">CHECK role in 5 values</text>
+  </g>
+
+  <!-- ============ PHYSICAL PLANT ============ -->
+  <text class="hd" x="278" y="150">PHYSICAL PLANT</text>
+  <g>
+    <rect class="core" x="274" y="160" width="200" height="104"/>
+    <text class="n"  x="284" y="178">beds</text>
+    <text class="pk" x="284" y="196">PK id</text>
+    <text class="c"  x="284" y="210">bed_label (unique) · ward</text>
+    <text class="c"  x="284" y="224">bay · bonding_stud_id</text>
+    <text class="cn" x="284" y="238">operational_status</text>
+    <text class="cn" x="284" y="252">CHECK O U C H X</text>
+  </g>
+  <g>
+    <rect class="ref" x="274" y="300" width="200" height="104"/>
+    <text class="n"  x="284" y="318">instruments</text>
+    <text class="pk" x="284" y="336">PK id</text>
+    <text class="fk"  x="284" y="350">FK bed_id to beds</text>
+    <text class="c"  x="284" y="364">device_type · model</text>
+    <text class="c"  x="284" y="378">serial_number</text>
+    <text class="cn" x="284" y="392">calibration_due_on</text>
+    <text class="cn" x="284" y="406">is_defib_ready</text>
+  </g>
+
+  <!-- ============ CLINICAL EPISODE ============ -->
+  <text class="hd" x="536" y="26">CLINICAL EPISODE</text>
+  <g>
+    <rect class="core" x="532" y="36" width="220" height="132"/>
+    <text class="n"  x="542" y="54">admissions</text>
+    <text class="pk" x="542" y="72">PK id</text>
+    <text class="fk"  x="542" y="86">FK patient_id to patients</text>
+    <text class="fk"  x="542" y="100">FK admitting_staff_id to staff</text>
+    <text class="c"  x="542" y="114">encounter_class (IMP)</text>
+    <text class="c"  x="542" y="128">admitted_at · discharged_at</text>
+    <text class="cn" x="542" y="142">care_context_ref (unique)</text>
+    <text class="cn" x="542" y="156">ABDM join key</text>
+    <text class="cn" x="542" y="164">must equal the published</text>
+  </g>
+
+  <!-- ============ TIME SERIES ============ -->
+  <text class="hd" x="536" y="200">TIME SERIES</text>
+  <g>
+    <rect class="core" x="532" y="210" width="290" height="176"/>
+    <text class="n"  x="542" y="228">vitals_log</text>
+    <text class="pk" x="542" y="246">PK id</text>
+    <text class="fk" x="542" y="260">FK bed_id to beds</text>
+    <text class="fk" x="542" y="274">FK patient_id, admission_id</text>
+    <text class="fk" x="542" y="288">FK parameter_code to parameters</text>
+    <text class="fk" x="542" y="302">FK instrument_id to instruments</text>
+    <text class="c" x="542" y="318">value_num · value_text</text>
+    <text class="c" x="542" y="332">unit_ucum</text>
+    <text class="cn" x="542" y="346">recorded_at · received_at</text>
+    <text class="cn" x="542" y="360">derived_from · record_status</text>
+    <text class="cn" x="542" y="376">CHECK per-parameter plausibility</text>
+    <text class="cn" x="542" y="390">CHECK MAP requires provenance</text>
+    <text class="cn" x="542" y="404">CHECK received_at &gt;= recorded_at</text>
+  </g>
+
+  <g>
+    <rect class="int" x="532" y="410" width="290" height="92"/>
+    <text class="n"  x="542" y="428">ix_vitals_bed_time</text>
+    <text class="c"  x="542" y="444">( bed_id, recorded_at DESC )</text>
+    <text class="cn" x="542" y="460">Required by milestone M5. Column order</text>
+    <text class="cn" x="542" y="474">matches the nurse-station access</text>
+    <text class="cn" x="542" y="488">pattern: one bed, newest first</text>
+  </g>
+
+  <!-- ============ ALARMS ============ -->
+  <text class="hd" x="278" y="440">ALARMS (IEC 60601-1-8)</text>
+  <g>
+    <rect class="core" x="274" y="450" width="212" height="152"/>
+    <text class="n"  x="284" y="468">alerts</text>
+    <text class="pk" x="284" y="486">PK id</text>
+    <text class="fk" x="284" y="500">FK bed_id, patient_id</text>
+    <text class="fk" x="284" y="514">FK admission_id</text>
+    <text class="fk" x="284" y="528">FK parameter_code</text>
+    <text class="fk" x="284" y="542">FK acknowledged_by to staff</text>
+    <text class="c" x="284" y="558">priority · kind · message</text>
+    <text class="cn" x="284" y="572">raised_at · annunciated_at</text>
+    <text class="cn" x="284" y="586">acknowledged_at · cleared_at</text>
+    <text class="cn" x="284" y="600">CHECK priority in 4-value set</text>
+  </g>
+  <g>
+    <rect class="ref" x="274" y="620" width="212" height="62"/>
+    <text class="n"  x="284" y="638">alarm_acknowledgements</text>
+    <text class="pk" x="284" y="654">PK id</text>
+    <text class="fk" x="284" y="668">FK alert_id · FK staff_id</text>
+    <text class="cn" x="284" y="680">Tamper-evident record required by 60601-1-8</text>
+  </g>
+
+  <!-- ============ DIGITAL HEALTH ============ -->
+  <text class="hd" x="24" y="452">DIGITAL HEALTH</text>
+  <g>
+    <rect class="int" x="20" y="462" width="196" height="104"/>
+    <text class="n"  x="30" y="480">abdm_consent_links</text>
+    <text class="pk" x="30" y="498">PK id</text>
+    <text class="fk" x="30" y="512">FK patient_id</text>
+    <text class="c"  x="30" y="526">consent_artefact_id</text>
+    <text class="cn" x="30" y="542">consent_status</text>
+    <text class="cn" x="30" y="556">CHECK GRANTED not ACTIVE</text>
+  </g>
+
+  <text class="hd" x="24" y="600">INVENTORY &amp; BILLING</text>
+  <g>
+    <rect class="ref" x="20" y="610" width="196" height="72"/>
+    <text class="n"  x="30" y="628">consumables</text>
+    <text class="pk" x="30" y="644">PK id · UK sku</text>
+    <text class="cn" x="30" y="660">on_hand · reorder_level</text>
+    <text class="cn" x="30" y="674">unit_cost_inr</text>
+  </g>
+
+  <!-- ============ RELATIONSHIPS ============ -->
+  <g class="lk">
+    <path d="M 216 200 L 532 84"/>
+    <path d="M 216 200 L 532 300"/>
+    <path d="M 216 200 L 274 200"/>
+    <path d="M 216 350 L 532 120"/>
+    <path d="M 216 340 L 20 330"/>
+
+    <path d="M 474 212 L 274 212"/>
+    <path d="M 380 264 L 380 300"/>
+
+    <path d="M 474 100 L 532 100"/>
+    <path d="M 216 352 L 486 560"/>
+    <path d="M 486 602 L 380 640"/>
+
+    <path d="M 822 212 L 822 410"/>
+    <path d="M 752 168 L 700 210"/>
+    <path d="M 752 288 L 600 450"/>
+  </g>
+  <text class="rel" x="352" y="192">1 : N</text>
+  <text class="rel" x="352" y="192"></text>
+  <text class="rel" x="330" y="204">occupies via bed_assignments</text>
+  <text class="rel" x="230" y="192">admitted to</text>
+  <text class="rel" x="800" y="160">discharges</text>
+  <text class="rel" x="366" y="286">1 : N instruments per bed</text>
+  <text class="rel" x="500" y="618">acknowledges</text>
+
+  <!-- ============ OUTBOX ============ -->
+  <g transform="translate(836,140)">
+    <rect class="int" x="0" y="0" width="164" height="128" rx="6"/>
+    <text class="n" x="12" y="20">sync_outbox</text>
+    <text class="pk" x="12" y="38">PK id</text>
+    <text class="cn" x="12" y="54">source_table</text>
+    <text class="cn" x="12" y="68">source_pk</text>
+    <text class="cn" x="12" y="82">operation</text>
+    <text class="cn" x="12" y="96">is_tombstone</text>
+    <text class="cn" x="12" y="112">published_at</text>
+    <text class="cn" x="12" y="126">payload</text>
+  </g>
+  <path class="lk" d="M 822 268 L 900 268 L 900 200"/>
+  <text class="rel" x="884" y="192">publishes</text>
+
+  <g transform="translate(836,420)">
+    <rect class="int" x="0" y="0" width="164" height="86" rx="6"/>
+    <text class="n" x="12" y="20">consumable_usage</text>
+    <text class="pk" x="12" y="38">PK id</text>
+    <text class="fk" x="12" y="52">FK consumable_id</text>
+    <text class="fk" x="12" y="66">FK admission_id</text>
+    <text class="cn" x="12" y="82">billed</text>
+  </g>
+  <path class="lk" d="M 216 646 L 900 646 L 900 506 L 836 463"/>
+  <path class="lk" d="M 752 84 L 900 84 L 900 420"/>
+
+  <g transform="translate(836,540)">
+    <rect class="int" x="0" y="0" width="164" height="72" rx="6"/>
+    <text class="n" x="12" y="20">billing_events</text>
+    <text class="pk" x="12" y="38">PK id</text>
+    <text class="fk" x="12" y="52">FK admission_id</text>
+    <text class="cn" x="12" y="68">amount_inr</text>
+  </g>
+
+  <!-- ============ NOTES ============ -->
+  <g transform="translate(20,180)">
+    <rect x="0" y="0" width="196" height="120" fill="#f8fafc" stroke="#cbd5e1" rx="6"/>
+    <text class="hd" x="10" y="18">Reading this</text>
+    <text class="cn" x="10" y="38">green border = core clinical</text>
+    <text class="cn" x="10" y="52">blue border = integration</text>
+    <text class="cn" x="10" y="66">grey border = reference</text>
+    <text class="cn" x="10" y="86">PK primary key · FK foreign</text>
+    <text class="cn" x="10" y="100">CHECK = enforced constraint</text>
+  </g>
+</svg>

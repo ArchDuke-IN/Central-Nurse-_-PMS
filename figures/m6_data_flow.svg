@@ -1,0 +1,170 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1020 640" width="1020" height="640" font-family="Segoe UI, Arial, sans-serif">
+  <title>Digital health data flow from ABHA enrolment through consent-gated record publication to the document read model</title>
+  <desc>Four stages. Ward counter scan and register using ABHA QR. Identity enrolment and care context linking. Consent request and artefact fetch. Episode close produces a wellness record which is published to the national health information exchange. In parallel, relational change data capture streams to the document read model through a transactional outbox.</desc>
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
+    </marker>
+    <marker id="arg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#047857"/>
+    </marker>
+    <style>
+      .stage{ fill:#ffffff; stroke:#94a3b8; stroke-width:1.4; stroke-dasharray:6 4; rx:10; }
+      .box  { fill:#eff6ff; stroke:#1d4ed8; stroke-width:1.8; rx:6; }
+      .cons { fill:#ecfdf5; stroke:#047857; stroke-width:1.8; rx:6; }
+      .pub  { fill:#fef3c7; stroke:#b45309; stroke-width:1.8; rx:6; }
+      .sync { fill:#f5f3ff; stroke:#7c3aed; stroke-width:1.8; rx:6; }
+      .arch { fill:#ffffff; stroke:#334155; stroke-width:1.8; rx:6; }
+      .t   { font-size:11px; fill:#0f172a; }
+      .tb  { font-size:12px; fill:#0f172a; font-weight:700; }
+      .ts  { font-size:9.5px; fill:#475569; }
+      .gl  { font-size:11.5px; font-weight:700; fill:#334155; letter-spacing:.05em; }
+      .ln  { stroke:#334155; stroke-width:1.6; fill:none; marker-end:url(#ar); }
+      .lnc { stroke:#047857; stroke-width:1.8; fill:none; marker-end:url(#arg); }
+      .sc  { font-size:9.5px; fill:#334155; }
+    </style>
+  </defs>
+
+  <rect width="1020" height="640" fill="#ffffff"/>
+
+  <text class="gl" x="24" y="26" fill="#0f172a">FIGURE 4 — DIGITAL HEALTH DATA FLOW</text>
+  <text class="ts" x="24" y="43">Real-time clinical monitoring stays inside the hospital. National exchange publication occurs at episode close, under explicit consent.</text>
+
+  <!-- ================= STAGE 1 ================= -->
+  <rect class="stage" x="20" y="60" width="230" height="250"/>
+  <text class="gl" x="32" y="80">STAGE 1 — ENROLMENT</text>
+  <text class="ts" x="32" y="96">Ward admission counter</text>
+
+  <rect class="box" x="32" y="106" width="206" height="52"/>
+  <text class="tb" x="42" y="124">Patient scans ABHA QR</text>
+  <text class="ts" x="42" y="139">Counter URL carries hip-id and</text>
+  <text class="ts" x="42" y="151">a stable counter-id</text>
+
+  <rect class="box" x="32" y="168" width="206" height="52"/>
+  <text class="tb" x="42" y="186">Bridge callback received</text>
+  <text class="ts" x="42" y="201">Acknowledge within 30 s, then</text>
+  <text class="ts" x="42" y="213">process. Never behind a write.</text>
+
+  <rect class="cons" x="32" y="230" width="206" height="66"/>
+  <text class="tb" x="42" y="248">Idempotent upsert</text>
+  <text class="ts" x="42" y="264">Callbacks may arrive out of order</text>
+  <text class="ts" x="42" y="276">and may be delivered twice.</text>
+  <text class="ts" x="42" y="288">Key on the request identifier.</text>
+
+  <!-- ================= STAGE 2 ================= -->
+  <rect class="stage" x="266" y="60" width="240" height="250"/>
+  <text class="gl" x="278" y="80">STAGE 2 — IDENTITY</text>
+  <text class="ts" x="278" y="96">Abha identity service</text>
+
+  <rect class="box" x="278" y="106" width="216" height="52"/>
+  <text class="tb" x="288" y="124">ABHA enrolment by Aadhaar</text>
+  <text class="ts" x="288" y="139">Request OTP, then verify.</text>
+  <text class="ts" x="288" y="151">Same scope array on both calls.</text>
+
+  <rect class="arch" x="278" y="168" width="216" height="52"/>
+  <text class="tb" x="288" y="186">Local check digit</text>
+  <text class="ts" x="288" y="201">Luhn for ABHA, Verhoeff for</text>
+  <text class="ts" x="288" y="213">Aadhaar, before the API call.</text>
+
+  <rect class="box" x="278" y="230" width="216" height="66"/>
+  <text class="tb" x="288" y="248">Link token, then care context</text>
+  <text class="ts" x="288" y="264">Token valid 6 months, stored</text>
+  <text class="ts" x="288" y="276">per patient.</text>
+  <text class="ts" x="288" y="290" font-weight="700">One care context per admission.</text>
+
+  <!-- ================= STAGE 3 ================= -->
+  <rect class="stage" x="522" y="60" width="240" height="250"/>
+  <text class="gl" x="534" y="80">STAGE 3 — CONSENT</text>
+  <text class="ts" x="534" y="96">Patient-controlled</text>
+
+  <rect class="cons" x="534" y="106" width="216" height="66"/>
+  <text class="tb" x="544" y="124">Request consent</text>
+  <text class="ts" x="544" y="140">Purpose, access mode, care</text>
+  <text class="ts" x="544" y="152">contexts, date range.</text>
+  <text class="ts" x="544" y="166">State REQUESTED.</text>
+
+  <rect class="cons" x="534" y="182" width="216" height="80"/>
+  <text class="tb" x="544" y="200">Fetch consent artefact</text>
+  <text class="ts" x="544" y="216">Store the request id AND every</text>
+  <text class="ts" x="544" y="228">artefact id produced.</text>
+  <text class="ts" x="544" y="244" font-weight="700">Success state is GRANTED,</text>
+  <text class="ts" x="544" y="256" font-weight="700">not ACTIVE.</text>
+
+  <rect class="arch" x="534" y="272" width="216" height="24" rx="4"/>
+  <text class="ts" x="544" y="288">Three clocks: request window, validity, date range</text>
+
+  <!-- ================= STAGE 4 ================= -->
+  <rect class="stage" x="778" y="60" width="222" height="250"/>
+  <text class="gl" x="790" y="80">STAGE 4 — PUBLISH</text>
+  <text class="ts" x="790" y="96">At episode close</text>
+
+  <rect class="pub" x="790" y="106" width="198" height="66"/>
+  <text class="tb" x="800" y="124">Assemble record</text>
+  <text class="ts" x="800" y="140">WellnessRecord profile —</text>
+  <text class="ts" x="800" y="152">the ABDM record type that</text>
+  <text class="ts" x="800" y="164">covers vitals.</text>
+
+  <rect class="pub" x="790" y="182" width="198" height="66"/>
+  <text class="tb" x="800" y="200">Data transfer</text>
+  <text class="ts" x="800" y="216">ECDH key agreement, then</text>
+  <text class="ts" x="800" y="228">encrypted payload within the</text>
+  <text class="ts" x="800" y="240">transfer window.</text>
+
+  <rect class="arch" x="790" y="272" width="198" height="24" rx="4"/>
+  <text class="ts" x="800" y="288">Direct HIP to HIU, no relay copy held</text>
+
+  <!-- stage arrows -->
+  <path class="ln" d="M 238 180 L 278 180"/>
+  <path class="ln" d="M 494 180 L 534 180"/>
+  <path class="ln" d="M 750 180 L 790 180"/>
+
+  <!-- ================= RELATIONAL SYNC (parallel) ================= -->
+  <rect class="stage" x="20" y="336" width="980" height="150"/>
+  <text class="gl" x="32" y="356">PARALLEL — INTERNAL SYNCHRONISATION (no national exchange involvement)</text>
+
+  <rect class="sync" x="32" y="366" width="200" height="52"/>
+  <text class="tb" x="42" y="384">PostgreSQL</text>
+  <text class="ts" x="42" y="399">System of record. Never</text>
+  <text class="ts" x="42" y="411">written by the app in parallel.</text>
+
+  <rect class="sync" x="272" y="366" width="220" height="52"/>
+  <text class="tb" x="282" y="384">Transactional outbox</text>
+  <text class="ts" x="282" y="399">Change data capture, at-least-once.</text>
+  <text class="ts" x="282" y="411">Tombstone on delete.</text>
+
+  <rect class="sync" x="532" y="366" width="216" height="52"/>
+  <text class="tb" x="542" y="384">Transformer</text>
+  <text class="ts" x="542" y="399">Maps relational rows to the</text>
+  <text class="ts" x="542" y="411">document shape. Excludes PII here.</text>
+
+  <rect class="sync" x="788" y="366" width="200" height="52"/>
+  <text class="tb" x="798" y="384">MongoDB read model</text>
+  <text class="ts" x="798" y="399">Aggregation and analytics.</text>
+  <text class="ts" x="798" y="411">Honours data_erase_at.</text>
+
+  <path class="ln" d="M 232 392 L 272 392"/>
+  <path class="ln" d="M 492 392 L 532 392"/>
+  <path class="ln" d="M 748 392 L 788 392"/>
+
+  <rect class="arch" x="32" y="432" width="956" height="44" rx="4"/>
+  <text class="ts" x="42" y="450" font-weight="700">Constraints carried by this design</text>
+  <text class="ts" x="42" y="465">Care-context references are identical in both stores, or discovery and linking cannot resolve. Erasure applies to both. A dual write from application code is rejected outright: it has no atomicity and the databases are guaranteed to drift.</text>
+
+  <!-- ================= LATENCY SPLIT ================= -->
+  <text class="gl" x="24" y="516" fill="#334155">TWO INDEPENDENT PATHS — DELIBERATELY SEPARATED</text>
+
+  <rect class="arch" x="20" y="526" width="480" height="94" rx="6"/>
+  <text class="tb" x="34" y="546">Real-time path</text>
+  <text class="ts" x="34" y="562">Bedside to hub to nurse station over MQTT at QoS 1. Alarms evaluated at the bedside</text>
+  <text class="ts" x="34" y="574">and at the hub, never on the archival path. Quality of service 1 gives delivery</text>
+  <text class="ts" x="34" y="586">acknowledgement and replay; a FHIR subscription is trial-use and best-effort, and issues</text>
+  <text class="ts" x="34" y="598">no notification at all when a resource is deleted.</text>
+  <text class="ts" x="34" y="612" font-weight="700">Alarm-critical. The archival path must never gate a nurse's response.</text>
+
+  <rect class="arch" x="520" y="526" width="480" height="94" rx="6"/>
+  <text class="tb" x="534" y="546">Archival path</text>
+  <text class="ts" x="534" y="562">Relational store to FHIR R4 resources for audit, trend review and export. Durable and</text>
+  <text class="ts" x="534" y="574">replayable, but latency is unconstrained and delivery is not guaranteed. Used for</text>
+  <text class="ts" x="534" y="586">the record, never for the response.</text>
+  <text class="ts" x="534" y="612" font-weight="700">National exchange publication is batched at episode close, not streamed per sample.</text>
+</svg>

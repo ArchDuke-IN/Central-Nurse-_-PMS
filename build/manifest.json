@@ -1,0 +1,96 @@
+{
+  "project": "5-Bed Centralised Patient Monitoring System (PMS)",
+  "course": "Biomedical Engineering",
+  "updated": "2026-10-19",
+
+  "engine": {
+    "sqlDialect": "postgresql",
+    "sqlVerifyEngine": "node:sqlite (3.53.3) via PostgreSQL->SQLite shim",
+    "note": "DDL is authored in PostgreSQL dialect. The verifier shims and executes it to prove it parses and that constraints actually fire. Shim gaps are guarded by -- @pg-only:begin/end markers."
+  },
+
+  "scanGlobs": {
+    "content": ["report/**/*.md", "db/**/*.sql"],
+    "figures": ["figures/*.svg"]
+  },
+
+  "milestones": [
+    { "id": "M1", "phase": 1, "name": "Requirements checklist",          "deliverable": "1 page checklist" },
+    { "id": "M2", "phase": 1, "name": "Instrument specification table", "deliverable": "Instrument spec table" },
+    { "id": "M3", "phase": 2, "name": "Ward layout & electrode diagram", "deliverable": "Layout schematic + electrode diagram" },
+    { "id": "M4", "phase": 2, "name": "System architecture diagram",   "deliverable": "Labelled block diagram" },
+    { "id": "M5", "phase": 2, "name": "RDBMS schema design",           "deliverable": "ER diagram + DDL" },
+    { "id": "M6", "phase": 3, "name": "Digital health flow",            "deliverable": "Data flow diagram" },
+    { "id": "M7", "phase": 3, "name": "HMS integration design",        "deliverable": "HMS integration map" },
+    { "id": "M8", "phase": 4, "name": "Draft all sections",             "deliverable": "Full 8-section draft" },
+    { "id": "M9", "phase": 4, "name": "Review & finalise",              "deliverable": "Submission-ready document" }
+  ],
+
+  "goals": {
+    "G1": "Physical ward design - 5-bed layout with instrumented bedside units",
+    "G2": "Centralised monitoring - all beds feed live vitals to one nurse station hub",
+    "G3": "Digital health integration - ABHA registration + MongoDB record sync",
+    "G4": "Data modelling - RDBMS schema covering patients, vitals, alerts, staff",
+    "G5": "HMS linkage - admission, billing and inventory into hospital-wide systems"
+  },
+
+  "sections": [
+    { "n": 1,  "id": "intro",          "file": "report/01_introduction.md",            "title": "Introduction and Scope" },
+    { "n": 2,  "id": "ward",           "file": "report/02_ward_layout.md",              "title": "Ward Layout and Physical Design" },
+    { "n": 3,  "id": "instruments",    "file": "report/03_instrument_specs.md",         "title": "Instrument Specifications" },
+    { "n": 4,  "id": "architecture",   "file": "report/04_system_architecture.md",     "title": "System Architecture and Alarm Design" },
+    { "n": 5,  "id": "data-model",     "file": "report/05_data_model.md",              "title": "Data Model and RDBMS Schema" },
+    { "n": 6,  "id": "digital-health", "file": "report/06_digital_health.md",          "title": "Digital Health Integration" },
+    { "n": 7,  "id": "hms",            "file": "report/07_hms_integration.md",         "title": "Hospital Management System Integration" },
+    { "n": 8,  "id": "safety",         "file": "report/08_safety_standards.md",        "title": "Safety, Standards and Risk Management" }
+  ],
+
+  "appendices": [
+    { "id": "A", "file": "report/appendices/A_requirements_checklist.md", "title": "Requirements Checklist (M1)", "milestone": "M1" },
+    { "id": "B", "file": "report/appendices/B_electrode_placement.md",    "title": "Electrode Placement Reference (M3)", "milestone": "M3" }
+  ],
+
+  "figures": [
+    { "id": "fig-ward",    "file": "figures/m3_ward_layout.svg",        "milestone": "M3", "caption": "Five-bed ward floor plan with nurse station and cable routing" },
+    { "id": "fig-ecg",     "file": "figures/m3_electrode_12lead.svg",   "milestone": "M3", "caption": "Ten-electrode 12-lead ECG placement" },
+    { "id": "fig-block",   "file": "figures/m4_block_diagram.svg",      "milestone": "M4", "caption": "System block diagram with alarm signal path and acknowledgement loop" },
+    { "id": "fig-er",      "file": "figures/m5_er_diagram.svg",         "milestone": "M5", "caption": "Entity-relationship diagram" },
+    { "id": "fig-flow",    "file": "figures/m6_data_flow.svg",          "milestone": "M6", "caption": "Digital health data flow: ABHA enrolment to MongoDB sync" },
+    { "id": "fig-hms",     "file": "figures/m7_hms_integration.svg",    "milestone": "M7", "caption": "HMS integration map: admission, billing and inventory" }
+  ],
+
+  "sql": {
+    "files": ["db/01_schema.sql"],
+    "mustContainTables": ["patients", "beds", "instruments", "vitals_log", "alerts", "staff"],
+    "mustContainIndexes": ["vitals_log (bed_id, recorded_at)"],
+    "seedFile": "db/02_seed.sql"
+  },
+
+  "globalChecks": {
+    "requiredCitations": [
+      { "id": "80601-2-49",   "pattern": "80601-2-49",   "why": "Multifunction patient monitors - the single most relevant particular standard; omitted from the original brief" },
+      { "id": "60601-2-27",   "pattern": "60601-2-27",   "why": "ECG monitoring (60601-2-25 explicitly excludes cardiac monitors)" },
+      { "id": "80601-2-30",   "pattern": "80601-2-30",   "why": "NIBP (renumbered from 60601-2-30)" },
+      { "id": "80601-2-61",   "pattern": "80601-2-61",   "why": "Pulse oximetry" },
+      { "id": "80601-2-56",   "pattern": "80601-2-56",   "why": "Clinical thermometers" },
+      { "id": "60601-1-8",    "pattern": "60601-1-8",    "why": "Alarm systems - governs the distributed alarm system" },
+      { "id": "60364-7-710",  "pattern": "60364-7-710",  "why": "Medical locations electrical installation" },
+      { "id": "62304",        "pattern": "62304",        "why": "Medical device software lifecycle" },
+      { "id": "DAS",          "pattern": "[Dd]istributed alarm system", "why": "Bedside->nurse station is the canonical DAS classification under 60601-1-8" },
+      { "id": "LOINC",         "pattern": "LOINC",        "why": "Observation terminology" },
+      { "id": "UCUM",          "pattern": "UCUM",         "why": "Unit terminology" },
+      { "id": "FHIR-R4",       "pattern": "FHIR R4|4\\.0\\.1", "why": "ABDM mandates FHIR R4" }
+    ],
+
+    "requiredTerminology": {
+      "loincVerified": ["8867-4","8480-6","8462-4","8478-0","85354-9","59408-5","2708-6","8310-5","9279-1","34565-2","55417-0","55284-4","35094-2","76536-2","11524-6","9874-9","8619-9","89263-8","8357-6","41904-4","8358-4","41901-0"],
+      "loincBanned":   ["85026-9","93000-9"],
+      "ucumVerified":  ["mm[Hg]","%","Cel","/min","{beats}/min","{breaths}/min","{counts}/min","cm","[degF]"]
+    },
+
+    "coverage": {
+      "goalsNeedSectionMention": true,
+      "goalsRegex": { "G1": "ward|layout|floor plan|bedside unit", "G2": "central|nurse station|hub|centralised", "G3": "ABHA|digital health|MongoDB", "G4": "schema|ER diagram|DDL|RDBMS|table", "G5": "HMS|billing|inventory|admission" }
+    }
+  }
+}

@@ -1,0 +1,236 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1020 700" width="1020" height="700" font-family="Segoe UI, Arial, sans-serif">
+  <title>Five-bed ward floor plan with nurse station, cable routing, patient safety zones and grounding points</title>
+  <desc>Plan view of a 9.6 by 7.2 metre general critical care ward. Five beds in three bays, a central nurse station with clear sightlines to every bed, handwash basins at the bay entries, a clean utility room, and a segregated cable trunk route from the nurse station to each bed head. Medical IT group supply and equipotential bonding studs are marked at each bed head. The electrosurgical source is located outside the ward, beyond the shielded boundary.</desc>
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#0f172a"/>
+    </marker>
+    <style>
+      .wall  { fill:#ffffff; stroke:#0f172a; stroke-width:3; }
+      .win   { fill:none; stroke:#0f172a; stroke-width:3; }
+      .bed   { fill:#eff6ff; stroke:#1d4ed8; stroke-width:2; }
+      .bedx  { fill:#fee2e2; stroke:#b91c1c; stroke-width:2; }
+      .ns    { fill:#ecfdf5; stroke:#047857; stroke-width:2.4; }
+      .util  { fill:#f8fafc; stroke:#475569; stroke-width:2; }
+      .zone  { fill:#fef3c7; stroke:#b45309; stroke-width:1.4; stroke-dasharray:6 4; }
+      .trunk { fill:none; stroke:#7c3aed; stroke-width:4; }
+      .cable { fill:none; stroke:#7c3aed; stroke-width:2; stroke-dasharray:5 4; }
+      .gnd   { fill:#fef9c3; stroke:#a16207; stroke-width:2; }
+      .esu   { fill:#fee2e2; stroke:#b91c1c; stroke-width:2.4; stroke-dasharray:7 5; }
+      .hs    { fill:#e0f2fe; stroke:#0369a1; stroke-width:1.6; }
+      .t   { font-size:11px; fill:#0f172a; }
+      .tb  { font-size:12.5px; fill:#0f172a; font-weight:700; }
+      .ts  { font-size:9.5px; fill:#475569; }
+      .dim { font-size:10px; fill:#64748b; font-style:italic; }
+      .gl  { font-size:11px; font-weight:700; letter-spacing:.05em; }
+      .lbl { font-size:10px; fill:#334155; }
+    </style>
+  </defs>
+
+  <rect width="1020" height="700" fill="#ffffff"/>
+
+  <!-- ============ TITLE ============ -->
+  <text class="gl" x="24" y="26" fill="#0f172a">FIGURE 1 — WARD FLOOR PLAN (5 BED, GENERAL CRITICAL CARE)</text>
+  <text class="dim" x="24" y="44">Not to scale. Dimensions in metres. Clear floor area 9.6 m × 7.2 m = 69.1 m² over 5 beds.</text>
+
+  <!-- ============ ROOM SHELL ============ -->
+  <rect class="wall" x="40" y="62" width="700" height="520" rx="2"/>
+
+  <!-- corridor + entrance -->
+  <rect class="util" x="40" y="560" width="700" height="22" fill="#f1f5f9"/>
+  <text class="ts" x="48" y="575">Corridor — 1.8 m clear width</text>
+  <rect class="wall" x="330" y="582" width="110" height="10" fill="#ffffff"/>
+  <text class="ts" x="348" y="600">Ward entrance (1.1 m)</text>
+
+  <!-- windows on external wall -->
+  <g class="win">
+    <line x1="120" y1="62" x2="220" y2="62"/><line x1="130" y1="54" x2="230" y2="54"/>
+    <line x1="280" y1="62" x2="380" y2="62"/><line x1="290" y1="54" x2="390" y2="54"/>
+    <line x1="440" y1="62" x2="540" y2="62"/><line x1="450" y1="54" x2="550" y2="54"/>
+    <line x1="600" y1="62" x2="700" y2="62"/><line x1="610" y1="54" x2="710" y2="54"/>
+  </g>
+
+  <!-- ============ SAFETY ZONES ============ -->
+  <rect class="zone" x="58" y="80" width="210" height="200" rx="8"/>
+  <text class="lbl" x="64" y="96" fill="#b45309">Patient safety zone — BAY 1</text>
+  <rect class="zone" x="290" y="80" width="210" height="200" rx="8"/>
+  <text class="lbl" x="296" y="96" fill="#b45309">Patient safety zone — BAY 2</text>
+  <rect class="zone" x="522" y="80" width="200" height="200" rx="8"/>
+  <text class="lbl" x="528" y="96" fill="#b45309">Patient safety zone — BAY 3</text>
+
+  <!-- ============ BEDS ============ -->
+  <!-- BED-01 -->
+  <g>
+    <rect class="bed" x="76" y="116" width="110" height="150" rx="4"/>
+    <rect x="76" y="116" width="110" height="26" fill="#bfdbfe" stroke="#1d4ed8" stroke-width="2"/>
+    <text class="tb" x="92" y="134">BED-01</text>
+    <text class="ts" x="82" y="164">Head unit</text>
+    <text class="ts" x="82" y="178">Monitor</text>
+    <text class="ts" x="82" y="196">Suction O₂</text>
+    <text class="ts" x="82" y="212">NIBP SpO₂</text>
+    <text class="ts" x="82" y="228">Type CF / BF</text>
+    <text class="ts" x="82" y="252">1.5 m clear</text>
+  </g>
+  <!-- BED-02 -->
+  <g>
+    <rect class="bed" x="308" y="116" width="110" height="150" rx="4"/>
+    <rect x="308" y="116" width="110" height="26" fill="#bfdbfe" stroke="#1d4ed8" stroke-width="2"/>
+    <text class="tb" x="324" y="134">BED-02</text>
+    <text class="ts" x="314" y="164">Head unit</text>
+    <text class="ts" x="314" y="178">Monitor</text>
+    <text class="ts" x="314" y="196">Suction O₂</text>
+    <text class="ts" x="314" y="212">NIBP SpO₂</text>
+    <text class="ts" x="314" y="228">Type CF / BF</text>
+    <text class="ts" x="314" y="252">1.5 m clear</text>
+  </g>
+  <!-- BED-03 -->
+  <g>
+    <rect class="bed" x="540" y="116" width="110" height="150" rx="4"/>
+    <rect x="540" y="116" width="110" height="26" fill="#bfdbfe" stroke="#1d4ed8" stroke-width="2"/>
+    <text class="tb" x="556" y="134">BED-03</text>
+    <text class="ts" x="546" y="164">Head unit</text>
+    <text class="ts" x="546" y="178">Monitor</text>
+    <text class="ts" x="546" y="196">Suction O₂</text>
+    <text class="ts" x="546" y="212">NIBP SpO₂</text>
+    <text class="ts" x="546" y="228">Type CF / BF</text>
+    <text class="ts" x="546" y="252">1.5 m clear</text>
+  </g>
+  <!-- BED-04 -->
+  <g>
+    <rect class="bed" x="308" y="316" width="110" height="150" rx="4"/>
+    <rect x="308" y="316" width="110" height="26" fill="#bfdbfe" stroke="#1d4ed8" stroke-width="2"/>
+    <text class="tb" x="324" y="334">BED-04</text>
+    <text class="ts" x="314" y="364">Head unit</text>
+    <text class="ts" x="314" y="378">Monitor</text>
+    <text class="ts" x="314" y="396">Suction O₂</text>
+    <text class="ts" x="314" y="412">NIBP SpO₂</text>
+    <text class="ts" x="314" y="428">Type CF / BF</text>
+  </g>
+  <!-- BED-05 -->
+  <g>
+    <rect class="bedx" x="540" y="316" width="110" height="150" rx="4"/>
+    <rect x="540" y="316" width="110" height="26" fill="#fecaca" stroke="#b91c1c" stroke-width="2"/>
+    <text class="tb" x="556" y="334">BED-05</text>
+    <text class="ts" x="546" y="364">OUT OF SERVICE</text>
+    <text class="ts" x="546" y="382">Cable termination</text>
+    <text class="ts" x="546" y="398">reserved, live</text>
+    <text class="ts" x="546" y="414">isolated outlets</text>
+    <text class="ts" x="546" y="434">Status X</text>
+  </g>
+
+  <!-- ============ GROUNDING / BONDING STUDS ============ -->
+  <g>
+    <circle class="gnd" cx="186" cy="124" r="8"/>
+    <text class="ts" x="150" y="112">EPS-01</text>
+    <circle class="gnd" cx="418" cy="124" r="8"/>
+    <text class="ts" x="382" y="112">EPS-02</text>
+    <circle class="gnd" cx="650" cy="124" r="8"/>
+    <text class="ts" x="614" y="112">EPS-03</text>
+    <circle class="gnd" cx="418" cy="324" r="8"/>
+    <text class="ts" x="382" y="312">EPS-04</text>
+    <circle class="gnd" cx="650" cy="324" r="8"/>
+    <text class="ts" x="614" y="312">EPS-05</text>
+  </g>
+
+  <!-- ============ HANDWASH ============ -->
+  <g>
+    <rect class="hs" x="58" y="300" width="150" height="26" rx="4"/>
+    <text class="ts" x="66" y="317">HANDWASH (bay entry)</text>
+    <rect class="hs" x="58" y="334" width="150" height="26" rx="4"/>
+    <text class="ts" x="66" y="351">CLINICAL HANDWASH</text>
+  </g>
+
+  <!-- ============ NURSE STATION ============ -->
+  <rect class="ns" x="60" y="400" width="400" height="140" rx="8"/>
+  <text class="tb" x="76" y="424">CENTRAL NURSE STATION</text>
+  <text class="ts" x="76" y="442">Sightline to all five beds without occlusion</text>
+  <rect x="80" y="452" width="120" height="70" fill="#ffffff" stroke="#047857" stroke-width="1.6" rx="3"/>
+  <text class="ts" x="88" y="472">VIEW STATION</text>
+  <text class="ts" x="88" y="488">5 beds · trends</text>
+  <text class="ts" x="88" y="504">alarm list</text>
+  <rect x="212" y="452" width="110" height="70" fill="#ffffff" stroke="#047857" stroke-width="1.6" rx="3"/>
+  <text class="ts" x="220" y="472">HUB SERVER</text>
+  <text class="ts" x="220" y="488">RAID 1</text>
+  <text class="ts" x="220" y="504">1 kVA UPS</text>
+  <rect x="334" y="452" width="110" height="70" fill="#ffffff" stroke="#047857" stroke-width="1.6" rx="3"/>
+  <text class="ts" x="342" y="472">SWITCH</text>
+  <text class="ts" x="342" y="488">dedicated</text>
+  <text class="ts" x="342" y="504">VLAN only</text>
+
+  <!-- sightlines -->
+  <g stroke="#047857" stroke-width="1" stroke-dasharray="3 4" opacity="0.65">
+    <line x1="131" y1="452" x2="131" y2="270"/>
+    <line x1="363" y1="452" x2="363" y2="270"/>
+    <line x1="595" y1="452" x2="595" y2="270"/>
+  </g>
+
+  <!-- ============ UTILITY ============ -->
+  <rect class="util" x="500" y="400" width="120" height="140" rx="6"/>
+  <text class="tb" x="512" y="424">CLEAN</text>
+  <text class="tb" x="512" y="440">UTILITY</text>
+  <text class="ts" x="512" y="462">Store</text>
+  <text class="ts" x="512" y="480">Consumables</text>
+  <text class="ts" x="512" y="502">PPE</text>
+  <text class="ts" x="512" y="524">No data cabling</text>
+
+  <!-- ============ MEDICAL IT SUPPLY ============ -->
+  <rect class="gnd" x="650" y="400" width="70" height="140" rx="6"/>
+  <text class="tb" x="660" y="428">MED</text>
+  <text class="tb" x="660" y="444">IT</text>
+  <text class="ts" x="658" y="468">Isolating</text>
+  <text class="ts" x="658" y="482">transformer</text>
+  <text class="ts" x="658" y="500">IMD to</text>
+  <text class="ts" x="658" y="514">IEC 61557-8</text>
+
+  <!-- ============ CABLE TRUNK ROUTE ============ -->
+  <path class="trunk" d="M 700 545 L 700 300 L 186 300 L 186 132"/>
+  <path class="cable" d="M 700 545 L 700 300 L 418 300 L 418 132"/>
+  <path class="cable" d="M 700 545 L 700 290 L 650 290 L 650 132"/>
+  <path class="cable" d="M 700 540 L 700 300 L 418 300 L 418 332"/>
+  <path class="cable" d="M 700 540 L 700 300 L 650 300 L 650 332"/>
+
+  <text class="lbl" x="474" y="312" fill="#7c3aed" font-weight="700">SEGREGATED DATA TRUNK — shielded, away from mains</text>
+
+  <!-- ============ ESU OUTSIDE THE WARD ============ -->
+  <rect class="esu" x="790" y="150" width="200" height="150" rx="8"/>
+  <text class="tb" x="802" y="174" fill="#b91c1c">ESU / DIATHERMY</text>
+  <text class="ts" x="802" y="196">Located OUTSIDE the ward</text>
+  <text class="ts" x="802" y="212">behind a shielded boundary</text>
+  <text class="ts" x="802" x="802" y="234">~500 kHz · 40–50 V/m at 1 m</text>
+  <text class="ts" x="802" y="252">CISPR 11 Group 2</text>
+  <text class="ts" x="802" y="274">RF filter + optical</text>
+  <text class="ts" x="802" y="290">isolation required</text>
+  <line x1="790" y1="225" x2="740" y2="225" stroke="#b91c1c" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#ar)"/>
+  <text class="ts" x="770" y="218" fill="#b91c1c" text-anchor="end">EM</text>
+
+  <!-- ============ DIMENSIONS ============ -->
+  <g stroke="#94a3b8" stroke-width="1" stroke-dasharray="3 3">
+    <line x1="40" y1="620" x2="740" y2="620"/>
+    <line x1="40" y1="616" x2="40" y2="624"/>
+    <line x1="740" y1="616" x2="740" y2="624"/>
+  </g>
+  <text class="dim" x="370" y="634" text-anchor="middle">9.6 m internal</text>
+  <g stroke="#94a3b8" stroke-width="1" stroke-dasharray="3 3">
+    <line x1="20" y1="62" x2="20" y2="582"/>
+    <line x1="16" y1="62" x2="24" y2="62"/>
+    <line x1="16" y1="582" x2="24" y2="582"/>
+  </g>
+  <text class="dim" x="16" y="330" text-anchor="middle" transform="rotate(-90 16 330)">7.2 m internal</text>
+
+  <!-- ============ LEGEND ============ -->
+  <g transform="translate(40,652)">
+    <rect x="0" y="0" width="700" height="36" fill="#f8fafc" stroke="#cbd5e1" rx="5"/>
+    <rect x="12" y="12" width="14" height="12" fill="#eff6ff" stroke="#1d4ed8" stroke-width="1.6"/>
+    <text class="lbl" x="32" y="22">Bed</text>
+    <rect x="78" y="12" width="14" height="12" fill="#fee2e2" stroke="#b91c1c" stroke-width="1.6"/>
+    <text class="lbl" x="98" y="22">Bed out of service</text>
+    <circle cx="212" cy="18" r="7" fill="#fef9c3" stroke="#a16207" stroke-width="1.6"/>
+    <text class="lbl" x="224" y="22">Equipotential bonding stud</text>
+    <line x1="392" y1="18" x2="428" y2="18" stroke="#7c3aed" stroke-width="4"/>
+    <text class="lbl" x="436" y="22">Data trunk</text>
+    <rect x="510" y="10" width="34" height="16" fill="#ecfdf5" stroke="#047857" stroke-width="1.6" rx="3"/>
+    <text class="lbl" x="550" y="22">Nurse station</text>
+    <rect x="640" y="10" width="34" height="16" fill="#fef3c7" stroke="#b45309" stroke-width="1.4" rx="3"/>
+    <text class="lbl" x="680" y="22">Safety zone</text>
+  </g>
+</svg>

@@ -1,0 +1,3324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="Five-bed centralised patient monitoring system — nurse station, ward layout, standards register and scope coverage.">
+<title>PMS · Nurse Station — ICU-A</title>
+<style>
+/* =====================================================================
+   PMS nurse-station interface
+   Dark clinical theme: a ward is dimly lit and a bright screen at the
+   desk is both a source of ambient light and an eyesight hazard.
+   ===================================================================== */
+
+:root {
+  /* surfaces */
+  --bg:            #070b10;
+  --bg-panel:      #0f151d;
+  --bg-raised:     #151d27;
+  --bg-inset:      #0a0f15;
+  --line:          #1e2833;
+  --line-soft:     #18202a;
+
+  /* text */
+  --fg:            #d7e0ea;
+  --fg-dim:        #8b9aab;
+  --fg-faint:      #5a6875;
+
+  /* parameter identity, held constant across every view */
+  --ecg:           #35e07a;
+  --spo2:          #35c8f0;
+  --nibp:          #ff6b6b;
+  --temp:          #ffb03a;
+  --resp:          #b388ff;
+
+  /* alarm priority, per IEC 60601-1-8 */
+  --high:          #ff3b3b;
+  --medium:        #ffb03a;
+  --low:           #4d9fff;
+  --info:          #6b7a8a;
+
+  --accent:        #35c8f0;
+  --ok:            #35e07a;
+
+  --radius:        8px;
+  --radius-sm:     5px;
+  --mono:          "Cascadia Mono", "SF Mono", Consolas, "Roboto Mono", monospace;
+  --sans:          "Segoe UI", Inter, system-ui, -apple-system, sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.45;
+  overflow: hidden;
+}
+
+/* ---------------------------------------------------------------- header */
+
+.hdr {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  height: 52px;
+  padding: 0 16px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--line);
+}
+
+.hdr__mark {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  padding-right: 16px;
+  border-right: 1px solid var(--line);
+}
+.hdr__mark b { font-size: 15px; letter-spacing: .02em; }
+.hdr__mark span { font-size: 11px; color: var(--fg-faint); }
+
+.hdr__status {
+  display: flex;
+  gap: 14px;
+  font-size: 11px;
+  color: var(--fg-dim);
+}
+.hdr__status i {
+  display: inline-block;
+  width: 7px; height: 7px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 6px var(--ok);
+}
+.hdr__status i.warn { background: var(--medium); box-shadow: 0 0 6px var(--medium); }
+.hdr__status i.bad  { background: var(--high);   box-shadow: 0 0 6px var(--high); }
+
+.hdr__clock {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--fg);
+  letter-spacing: .04em;
+}
+.hdr__clock small { color: var(--fg-faint); margin-left: 8px; }
+
+/* ------------------------------------------------------------------- nav */
+
+.nav {
+  display: flex;
+  gap: 2px;
+  height: 40px;
+  padding: 0 16px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--line);
+}
+.nav button {
+  position: relative;
+  padding: 0 15px;
+  border: 0;
+  background: transparent;
+  color: var(--fg-dim);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: color .12s;
+}
+.nav button:hover { color: var(--fg); }
+.nav button[aria-selected="true"] { color: var(--fg); }
+.nav button[aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  left: 10px; right: 10px; bottom: -1px;
+  height: 2px;
+  background: var(--accent);
+}
+.nav button .badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: 9px;
+  background: var(--high);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+/* -------------------------------------------------------- scenario bar */
+
+/* Both control bars wrap rather than overflow.
+ *
+ * A fixed height with no wrapping silently clips whatever does not fit, and
+ * what gets clipped is whichever control happens to sit furthest right — here
+ * the lowest-priority alarm audition. That control disappearing is exactly the
+ * kind of quiet, layout-driven omission that is easy to miss in review and
+ * fatal in a demonstration, so the bars wrap and grow instead. min-height
+ * keeps the compact single-row appearance whenever there is room for it. */
+.scenariobar,
+.audiobar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  min-height: 34px;
+  padding: 5px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.scenariobar {
+  background: var(--bg-inset);
+}
+.audiobar {
+  gap: 8px;
+  font-size: 11px;
+  background: var(--bg-panel);
+}
+
+/* The hint is the first thing that can go when space is tight; it restates
+   what the adjacent buttons already say. */
+@media (max-width: 900px) {
+  .scenariobar__hint { display: none; }
+}
+.scenariobar__lbl {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--fg-faint);
+  margin-right: 4px;
+}
+.scenariobar button {
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--bg-raised);
+  color: var(--fg-dim);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition: border-color .12s, color .12s;
+}
+.scenariobar button:hover { border-color: var(--accent); color: var(--accent); }
+.scenariobar button.muted { opacity: .65; }
+.scenariobar__hint {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--fg-faint);
+}
+
+/* ------------------------------------------------------------ audio bar */
+
+.audiobar__lbl {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--fg-faint);
+}
+.audiobar button, .audiobar select {
+  padding: 3px 9px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--bg-raised);
+  color: var(--fg-dim);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition: border-color .12s, color .12s, background .12s;
+}
+.audiobar button:hover, .audiobar select:hover { border-color: var(--accent); color: var(--accent); }
+.audiobar button.muted { opacity: .6; }
+
+.audiobar__power { font-weight: 700; white-space: nowrap; }
+.audiobar__power[data-on="true"] {
+  background: #14301f;
+  border-color: var(--ok);
+  color: var(--ok);
+}
+.audiobar__power[data-on="true"]:hover { background: var(--ok); color: #000; }
+
+.audiobar input[type="range"] {
+  width: 84px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.audiobar__sep {
+  width: 1px;
+  height: 18px;
+  background: var(--line);
+}
+.audiobar__field {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--fg-faint);
+  font-size: 10.5px;
+}
+.audiobar__field select {
+  padding: 2px 6px;
+  background: var(--bg-inset);
+  color: var(--fg);
+}
+
+/* Priority swatches double as the audition buttons, so the colour an
+   examiner sees on the alarm list is the colour of the button that plays
+   that priority's sound. */
+.swatch { border-left-width: 3px !important; }
+.swatch--high   { border-left-color: var(--high) !important; }
+.swatch--medium { border-left-color: var(--medium) !important; }
+.swatch--low    { border-left-color: var(--low) !important; }
+
+.audiobar__state {
+  margin-left: auto;
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  white-space: nowrap;
+  background: #17222e;
+  color: var(--fg-dim);
+}
+.audiobar__state[data-state="live"]   { background: #14301f; color: var(--ok); }
+.audiobar__state[data-state="paused"] { background: #3a2a0c; color: var(--medium); }
+.audiobar__state[data-state="off"]    { background: #2c1a1a; color: var(--high); }
+
+/* ------------------------------------------------------------------ main */
+
+.main {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  height: calc(100vh - 162px);
+}
+.view { overflow: auto; padding: 14px; }
+.view[hidden] { display: none; }
+
+/* ------------------------------------------------------------- bed grid */
+
+.beds {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 12px;
+  align-content: start;
+}
+
+.bed {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: border-color .18s;
+}
+.bed[data-status="X"] { opacity: .45; }
+.bed[data-alarm="HIGH"]   { border-color: var(--high);   box-shadow: 0 0 0 1px var(--high),   0 0 22px -8px var(--high); }
+.bed[data-alarm="MEDIUM"] { border-color: var(--medium); box-shadow: 0 0 0 1px var(--medium); }
+.bed[data-alarm="LOW"]    { border-color: var(--low);    box-shadow: 0 0 0 1px var(--low); }
+
+.bed__hdr {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 11px;
+  background: var(--bg-raised);
+  border-bottom: 1px solid var(--line-soft);
+}
+.bed__id {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .05em;
+}
+.bed__pt { font-size: 12.5px; color: var(--fg); }
+.bed__meta { font-size: 10.5px; color: var(--fg-faint); }
+.bed__spacer { margin-left: auto; }
+
+.chip {
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.chip--occ   { background: #14301f; color: var(--ecg); }
+.chip--free  { background: #17222e; color: var(--fg-dim); }
+.chip--oos   { background: #2c1a1a; color: var(--high); }
+
+/* waveforms */
+
+.waves {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 7px 9px;
+  background: var(--bg-inset);
+}
+.wave { display: flex; align-items: center; gap: 7px; }
+.wave__tag {
+  width: 30px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  opacity: .9;
+}
+.wave canvas {
+  flex: 1;
+  height: 34px;
+  display: block;
+  border-radius: 2px;
+}
+
+/* numerics */
+
+.nums {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+  background: var(--line-soft);
+  border-top: 1px solid var(--line-soft);
+}
+.num {
+  padding: 6px 3px;
+  background: var(--bg-panel);
+  text-align: center;
+  min-width: 0;
+  overflow: hidden;
+}
+.num__v {
+  font-family: var(--mono);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+.num__u {
+  font-size: 8.5px;
+  color: var(--fg-faint);
+  margin-top: -1px;
+  white-space: nowrap;
+}
+.num__k {
+  font-size: 8.5px;
+  color: var(--fg-faint);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  margin-top: 3px;
+  white-space: nowrap;
+}
+.num__lim {
+  display: block;
+  font-size: 8px;
+  opacity: .65;
+  letter-spacing: 0;
+}
+.num[data-p="ecg"]  .num__v { color: var(--ecg); }
+.num[data-p="spo2"] .num__v { color: var(--spo2); }
+.num[data-p="nibp"] .num__v { color: var(--nibp); font-size: 17px; }
+.num[data-p="temp"] .num__v { color: var(--temp); }
+.num[data-p="resp"] .num__v { color: var(--resp); }
+.num[data-breach="true"] .num__v { animation: breach 1.1s steps(1) infinite; }
+.num[data-breach="true"] .num__lim { color: var(--high); opacity: 1; font-weight: 700; }
+.num[data-stale="true"]  { opacity: .45; }
+
+@keyframes breach { 0%, 49% { opacity: 1 } 50%, 100% { opacity: .25 } }
+
+/* alarm banner on the tile */
+
+.alarmbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  border-top: 1px solid transparent;
+}
+.alarmbar[data-p="HIGH"]   { background: #3a0f0f; color: #ff8a8a; border-top-color: #5a1a1a; }
+.alarmbar[data-p="MEDIUM"] { background: #3a2a0c; color: #ffcb6b; border-top-color: #5a3f12; }
+.alarmbar[data-p="LOW"]    { background: #10243a; color: #8ec6ff; border-top-color: #1a3a5a; }
+.alarmbar button {
+  margin-left: auto;
+  padding: 2px 10px;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.alarmbar button:hover { background: currentColor; color: #000; }
+
+/* ------------------------------------------------------------ alarm rail */
+
+.rail {
+  border-left: 1px solid var(--line);
+  background: var(--bg-panel);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.rail__hd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 13px;
+  border-bottom: 1px solid var(--line);
+}
+.rail__hd h2 { font-size: 12.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--fg-dim); }
+.rail__hd .count {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--fg-dim);
+}
+.rail__list { overflow: auto; flex: 1; }
+
+.alm {
+  padding: 9px 13px;
+  border-bottom: 1px solid var(--line-soft);
+  border-left: 3px solid transparent;
+  cursor: pointer;
+}
+.alm:hover { background: var(--bg-raised); }
+.alm[data-p="HIGH"]     { border-left-color: var(--high); }
+.alm[data-p="MEDIUM"]   { border-left-color: var(--medium); }
+.alm[data-p="LOW"]      { border-left-color: var(--low); }
+.alm[data-p="INFORMATION"] { border-left-color: var(--info); opacity: .7; }
+.alm[data-ack="true"]   { opacity: .45; }
+.alm__top { display: flex; gap: 8px; align-items: baseline; }
+.alm__bed { font-family: var(--mono); font-size: 11.5px; font-weight: 700; }
+.alm__pri { font-size: 9.5px; font-weight: 700; letter-spacing: .06em; }
+.alm[data-p="HIGH"] .alm__pri   { color: var(--high); }
+.alm[data-p="MEDIUM"] .alm__pri { color: var(--medium); }
+.alm[data-p="LOW"] .alm__pri    { color: var(--low); }
+.alm[data-p="INFORMATION"] .alm__pri { color: var(--info); }
+.alm__t { margin-left: auto; font-family: var(--mono); font-size: 10.5px; color: var(--fg-faint); }
+.alm__msg { margin-top: 3px; font-size: 12px; }
+.alm__kind { font-size: 10px; color: var(--fg-faint); margin-top: 2px; }
+.alm__ack {
+  margin-top: 6px;
+  padding: 2px 9px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--fg-dim);
+  font: inherit;
+  font-size: 10.5px;
+  cursor: pointer;
+}
+.alm__ack:hover { border-color: var(--accent); color: var(--accent); }
+
+/* --------------------------------------------------------- generic cards */
+
+.card {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+}
+.card__hd {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--fg-dim);
+}
+.card__bd { padding: 13px 14px; }
+
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+
+table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+th, td { padding: 7px 10px; text-align: left; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+th { color: var(--fg-faint); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; font-weight: 600; }
+tbody tr:hover { background: var(--bg-raised); }
+td code, .mono { font-family: var(--mono); font-size: 11.5px; color: var(--accent); }
+
+.pill {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 9px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.pill--ok   { background: #14301f; color: var(--ok); }
+.pill--part { background: #3a2a0c; color: var(--medium); }
+.pill--no   { background: #3a0f0f; color: var(--high); }
+
+.kv { display: grid; grid-template-columns: 190px 1fr; gap: 4px 12px; font-size: 12.5px; }
+.kv dt { color: var(--fg-faint); }
+.kv dd { color: var(--fg); }
+
+.bar { height: 5px; border-radius: 3px; background: var(--bg-inset); overflow: hidden; margin-top: 3px; }
+.bar > i { display: block; height: 100%; background: var(--accent); }
+
+/* trend chart */
+
+.trend { width: 100%; height: 190px; display: block; }
+.legend { display: flex; gap: 16px; margin-top: 8px; font-size: 11px; color: var(--fg-dim); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend b { width: 10px; height: 3px; border-radius: 2px; }
+
+/* ward map */
+
+.wardmap { display: block; width: 100%; height: auto; }
+.wardmap text { font-family: var(--sans); }
+
+/* scrollbars */
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: #233040; border-radius: 5px; }
+::-webkit-scrollbar-thumb:hover { background: #2e3f52; }
+
+/* ==========================================================================
+   Narrow-screen behaviour.
+
+   The alarm list must NEVER silently disappear. Hiding it to gain width
+   would mean a nurse on a tablet sees no alarms at all, which is the worst
+   possible failure for this device. Below the breakpoint the rail becomes a
+   slide-over drawer with a permanently visible toggle carrying the open
+   alarm count.
+   ========================================================================== */
+
+.rail__close, .rail__toggle { display: none; }
+
+@media (max-width: 1180px) {
+  .main { grid-template-columns: 1fr; }
+
+  .rail {
+    position: fixed;
+    top: 0; right: 0; bottom: 0;
+    width: min(380px, 92vw);
+    z-index: 40;
+    border-left: 1px solid var(--line);
+    box-shadow: -18px 0 40px rgba(0, 0, 0, .55);
+    transform: translateX(100%);
+    transition: transform .18s ease-out;
+  }
+  .rail[data-open="true"] { transform: none; }
+
+  .rail__close {
+    display: block;
+    margin-left: 6px;
+    padding: 0 7px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--fg-dim);
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .rail__close:hover { border-color: var(--high); color: var(--high); }
+
+  .rail__toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: fixed;
+    right: 14px; bottom: 14px;
+    z-index: 45;
+    padding: 9px 15px;
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    background: var(--bg-raised);
+    color: var(--fg);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 6px 22px rgba(0, 0, 0, .5);
+  }
+  .rail__toggle-badge {
+    min-width: 20px;
+    padding: 1px 6px;
+    border-radius: 10px;
+    background: var(--high);
+    color: #fff;
+    font-size: 11px;
+    text-align: center;
+  }
+  .rail__toggle-badge[data-zero="true"] { background: #233040; color: var(--fg-faint); }
+
+  .beds { grid-template-columns: 1fr; }
+
+  /* Room for the floating alarm toggle, so the last bed can be scrolled clear
+     of it rather than sitting permanently underneath. */
+  .main { padding-bottom: 56px; }
+}
+
+/* ------------------------------------------------------------- a11y ---- */
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/*
+  The breach blink is the only flashing element. It runs at roughly 1.1 Hz,
+  below the 3 Hz threshold that triggers photosensitive discomfort, but an
+  operator who asks for reduced motion still gets the state conveyed by
+  colour and by the explicit BREACH label rather than by blinking.
+*/
+@media (prefers-reduced-motion: reduce) {
+  .num[data-breach="true"] .num__v { animation: none; opacity: 1; }
+  .bed, .rail { transition: none; }
+  * { scroll-behavior: auto !important; }
+}
+
+/* -------------------------------------------------------------- print --- */
+
+@media print {
+  :root { --bg: #fff; --fg: #111; --fg-dim: #333; --fg-faint: #555; }
+  .hdr, .nav, .scenariobar, .audiobar, .rail, .rail__toggle, .badge { display: none !important; }
+  body, html { background: #fff; color: #111; overflow: visible; height: auto; }
+  .main { display: block; height: auto; }
+  .view { overflow: visible; padding: 0; }
+  .view[hidden] { display: none !important; }
+  .card { border-color: #ccc; break-inside: avoid; page-break-inside: avoid; }
+  .num__v, .num__k, .num__u { color: #111 !important; }
+  .trend { height: 130px; }
+}
+
+</style>
+
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23070b10'/><path d='M4 16h6l3-8 4 16 3-8h8' stroke='%2335e07a' stroke-width='2.2' fill='none' stroke-linejoin='round'/></svg>">
+</head>
+<body>
+
+<header class="hdr">
+  <div class="hdr__mark">
+    <b>PMS</b><span>Patient Monitoring System</span>
+  </div>
+  <div class="hdr__status">
+    <span><i></i>Gateway</span>
+    <span><i></i>Monitoring VLAN</span>
+    <span><i></i>MQTT broker</span>
+    <span><i></i>FHIR R4 archive</span>
+    <span><i></i>ABDM consent</span>
+  </div>
+  <div class="hdr__clock" id="clock">--:--:--</div>
+</header>
+
+<nav class="nav" role="tablist" aria-label="Views">
+  <button role="tab" data-view="dashboard" aria-selected="true"  aria-controls="view-dashboard">Nurse Station</button>
+  <button role="tab" data-view="trends"    aria-selected="false" aria-controls="view-trends">Trends</button>
+  <button role="tab" data-view="ward"      aria-selected="false" aria-controls="view-ward">Ward</button>
+  <button role="tab" data-view="audit"     aria-selected="false" aria-controls="view-audit">Audit</button>
+  <button role="tab" data-view="standards" aria-selected="false" aria-controls="view-standards">Standards</button>
+  <button role="tab" data-view="scope"     aria-selected="false" aria-controls="view-scope">Scope <span class="badge" id="badge"></span></button>
+</nav>
+
+<div class="scenariobar">
+  <span class="scenariobar__lbl">Demonstration</span>
+  <button data-scenario="desat">SpO₂ → 82%</button>
+  <button data-scenario="tachy">HR → 168</button>
+  <button data-scenario="hypotension">72/44</button>
+  <button data-scenario="technical">Lead off</button>
+  <button data-scenario="info">Info signal</button>
+  <button data-scenario="reset" class="muted">Clear</button>
+  <span class="scenariobar__hint">Operates on BED-01 · deterministic</span>
+</div>
+
+<div class="audiobar">
+  <span class="audiobar__lbl">Audio</span>
+
+  <button id="audioToggle" class="audiobar__power">Enable audio</button>
+
+  <label class="audiobar__field">Level
+    <input type="range" id="audioVol" min="0" max="100" value="85" aria-label="Alarm level">
+  </label>
+
+  <label class="audiobar__field">Pulse
+    <input type="range" id="pulseVol" min="0" max="100" value="45" aria-label="Pulse tone level">
+  </label>
+
+  <span class="audiobar__sep"></span>
+
+  <label class="audiobar__field">Pulse tone
+    <select id="toneBed" aria-label="Bed for the pulse tone">
+      <option value="bed-001">BED-01</option>
+      <option value="bed-003">BED-03</option>
+      <option value="bed-004">BED-04</option>
+      <option value="none">off</option>
+    </select>
+  </label>
+  <button id="auditionPulse" title="Heartbeat pip, two-part">♡</button>
+
+  <span class="audiobar__sep"></span>
+
+  <label class="audiobar__field">Category
+    <select id="auditionCat" aria-label="Alarm category">
+      <option value="cardiovascular">Cardiovascular</option>
+      <option value="oxygenation">Oxygenation</option>
+      <option value="ventilation">Ventilation</option>
+      <option value="temperature">Temperature</option>
+      <option value="general">General</option>
+    </select>
+  </label>
+  <button data-audition="HIGH"   class="swatch swatch--high">High</button>
+  <button data-audition="MEDIUM" class="swatch swatch--medium">Medium</button>
+  <button data-audition="LOW"    class="swatch swatch--low">Low</button>
+
+  <span class="audiobar__sep"></span>
+
+  <button id="audioPause">Pause 2 min</button>
+  <button id="audioOff" class="muted">Silence</button>
+
+  <span class="audiobar__state" id="audioState">off</span>
+</div>
+
+<main class="main">
+  <section class="view" id="view-dashboard">
+    <div class="beds" id="beds"></div>
+  </section>
+
+  <section class="view" id="view-trends" hidden>
+    <div id="trends"></div>
+  </section>
+
+  <section class="view" id="view-ward" hidden>
+    <div id="ward"></div>
+  </section>
+
+  <section class="view" id="view-standards" hidden>
+    <div id="standards"></div>
+  </section>
+
+  <section class="view" id="view-audit" hidden>
+    <div id="audit"></div>
+  </section>
+
+  <section class="view" id="view-scope" hidden>
+    <div id="scope"></div>
+  </section>
+
+  <!--
+    Screen readers get no benefit from a canvas trace, and a nurse using
+    assistive technology must still be told when an alarm condition arises.
+    This region is the announcement channel; it is deliberately off-screen.
+  -->
+  <div id="live" class="sr-only" role="status" aria-live="assertive" aria-atomic="true"></div>
+
+  <aside class="rail" id="rail" aria-label="Alarm list">
+    <div class="rail__hd">
+      <h2>Alarms</h2>
+      <span class="count" id="railCount">all clear</span>
+      <button class="alm__ack" id="ackAll">Ack all</button>
+      <button class="rail__close" id="railClose" aria-label="Hide alarm list">×</button>
+    </div>
+    <div class="rail__list" id="railList"></div>
+    <div class="rail__empty" id="railEmpty">
+      <p>No alarms.</p>
+      <p class="rail__hint">Use the demonstration bar to raise one.</p>
+    </div>
+  </aside>
+</main>
+
+<button class="rail__toggle" id="railToggle" aria-controls="rail" aria-expanded="false">
+  <span class="rail__toggle-badge" id="railToggleBadge">0</span>
+  <span>Alarms</span>
+</button>
+
+<script type="module">
+
+/* ==== js/sim.js ==== */
+/* =====================================================================
+   Physiological signal simulation.
+
+   Everything here is deterministic given a seed, so a demonstration
+   replays identically every time. The waveforms are synthesised from
+   summed Gaussian components rather than random noise, because a
+   nurse reading this screen will recognise a wrong-looking QRS
+   immediately and that is precisely the skill the system is meant
+   to support.
+   ===================================================================== */
+
+/** Deterministic PRNG (mulberry32). */
+function rng(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const gauss = (t, mu, sigma) => Math.exp(-((t - mu) ** 2) / (2 * sigma * sigma));
+
+/* ------------------------------------------------------------------ ECG */
+
+/**
+ * One normalised PQRST complex over a phase of 0..1, scaled by 1 mV.
+ * Component amplitudes and widths are within normal adult ranges:
+ * P 0.10-0.25 mV, R 0.5-2.0 mV, T 0.1-0.5 mV.
+ */
+function qrs(phase) {
+  let v = 0;
+  v += 0.15 * gauss(phase, 0.16, 0.022);   // P
+  v += -0.08 * gauss(phase, 0.28, 0.006);  // Q
+  v += 1.00 * gauss(phase, 0.30, 0.008);   // R
+  v += -0.22 * gauss(phase, 0.33, 0.009);  // S
+  v += 0.30 * gauss(phase, 0.46, 0.035);   // T
+  // Slow ST-segment drift, the reason a 0.05 Hz high-pass exists at all.
+  v += 0.012 * Math.sin(phase * Math.PI * 2);
+  return v;
+}
+
+/* -------------------------------------------------- plethysmograph (PPG) */
+
+/** Arterial pulse with a dicrotic notch: fast upstroke, decay, notch, second decay. */
+function pleth(phase) {
+  const systole = Math.exp(-((phase - 0.16) ** 2) / (2 * 0.055 * 0.055)) * 1.0;
+  const notch   = 0.32 * Math.exp(-((phase - 0.40) ** 2) / (2 * 0.045 * 0.045));
+  const decay   = 0.55 * Math.exp(-phase / 0.16) * (phase > 0.12 ? 1 : 0);
+  return Math.max(0, systole + notch + decay);
+}
+
+/* ------------------------------------------------------------ respiratory */
+
+function respiration(phase) {
+  return Math.sin(phase * Math.PI * 2) * 0.5 + 0.5;
+}
+
+/* ===================================================================== */
+/*  Bed model                                                            */
+/* ===================================================================== */
+
+const BED_SEEDS = [
+  { id: 'bed-001', label: 'BED-01', mrn: 'MR2026001', name: 'Anil Sharma',   sex: 'M', age: 47, dx: 'Post-operative monitoring',  seed: 101, profile: 'stable' },
+  { id: 'bed-002', label: 'BED-02', mrn: null,         name: null,           sex: null, age: null, dx: null, seed: 202, profile: 'free' },
+  { id: 'bed-003', label: 'BED-03', mrn: 'MR2026002', name: 'Meera Iyer',     sex: 'F', age: 41, dx: 'Acute asthma, exacerbation', seed: 303, profile: 'desat' },
+  { id: 'bed-004', label: 'BED-04', mrn: 'MR2026003', name: 'Joseph D’Souza', sex: 'M', age: 68, dx: 'Community-acquired pneumonia', seed: 404, profile: 'sepsis' },
+  { id: 'bed-005', label: 'BED-05', mrn: null,         name: null,           sex: null, age: null, dx: null, seed: 505, profile: 'oos' },
+];
+
+/* Default alarm limits. Clinical practice defaults, not values prescribed by
+   IEC 60601-1-8 — the standard grades conditions, it does not set limits. */
+const LIMITS = {
+  '8867-4':  { low: 50,  high: 120, unit: '/min' },
+  '59408-5': { low: 90,  high: 100, unit: '%' },
+  '8480-6':  { low: 90,  high: 160, unit: 'mmHg' },
+  '8462-4':  { low: 50,  high: 100, unit: 'mmHg' },
+  '8478-0':  { low: 65,  high: 110, unit: 'mmHg' },
+  '8310-5':  { low: 36.0,high: 38.0,unit: '°C' },
+  '9279-1':  { low: 8,   high: 30,  unit: '/min' },
+};
+
+const PARAM_META = {
+  '8867-4':  { key: 'hr',    label: 'HR',   unit: '/min',      colour: 'var(--ecg)',  digits: 0 },
+  '59408-5': { key: 'spo2',  label: 'SpO₂', unit: '%',         colour: 'var(--spo2)', digits: 0 },
+  '8480-6':  { key: 'sbp',   label: 'SYS',  unit: 'mmHg',      colour: 'var(--nibp)', digits: 0 },
+  '8462-4':  { key: 'dbp',   label: 'DIA',  unit: 'mmHg',      colour: 'var(--nibp)', digits: 0 },
+  '8478-0':  { key: 'map',   label: 'MAP',  unit: 'mmHg',      colour: 'var(--nibp)', digits: 0 },
+  '8310-5':  { key: 'temp',  label: 'TEMP', unit: '°C',        colour: 'var(--temp)', digits: 1 },
+  '9279-1':  { key: 'rr',    label: 'RR',   unit: '/min',      colour: 'var(--resp)', digits: 0 },
+};
+
+class Bed {
+  constructor(cfg) {
+    Object.assign(this, cfg);
+    this.operationalStatus = cfg.profile === 'oos' ? 'X' : cfg.profile === 'free' ? 'U' : 'O';
+    this.r = rng(cfg.seed);
+    this.base = { hr: 78, spo2: 97, sbp: 122, dbp: 76, temp: 36.9, rr: 15 };
+    this.vitals = { ...this.base };
+    this.phase = { ecg: 0, pleth: 0, resp: this.r() };
+    this.history = [];
+    this.nibpPhase = 'idle';
+    this.nibpTimer = 8 + this.r() * 40;
+    this.leadsOff = false;
+    this.spo2SignalLost = false;
+    this.override = {};
+    this.overrideUntil = {};
+    this.technicalText = null;
+    this.technicalUntil = 0;
+  }
+
+  get occupied() { return this.operationalStatus === 'O'; }
+
+  /** One simulation tick. dt is elapsed seconds. */
+  tick(dt) {
+    if (!this.occupied) return;
+    const r = this.r;
+
+    // --- targets drift toward the profile's clinical picture -------------
+    const target = { hr: 78, spo2: 97, sbp: 122, dbp: 76, temp: 36.9, rr: 15 };
+    if (this.profile === 'desat')  Object.assign(target, { spo2: 86, hr: 112, rr: 26, sbp: 118, dbp: 72 });
+    if (this.profile === 'sepsis') Object.assign(target, { hr: 118, rr: 26, sbp: 94,  dbp: 54, temp: 38.6, spo2: 93 });
+
+    // Demonstration overrides win over the profile, and expire on their own.
+    for (const key of Object.keys(this.override)) {
+      this.overrideUntil[key] -= dt;
+      if (this.overrideUntil[key] <= 0) { delete this.override[key]; delete this.overrideUntil[key]; continue; }
+      target[key] = this.override[key];
+    }
+    if (this.technicalUntil > 0) this.technicalUntil -= dt;
+
+    // Per-parameter smoothing so numbers wander rather than jump.
+    // An injected override converges quickly; natural drift stays gentle.
+    const ease = (key, rate, jitter) => {
+      const forced = this.override[key] !== undefined;
+      const r = forced ? rate * 6 : rate;
+      this.vitals[key] += (target[key] - this.vitals[key]) * r * dt + (this.r() - 0.5) * jitter * dt;
+    };
+    ease('hr',    0.25, 1.2);
+    ease('spo2',  0.30, 0.25);
+    ease('sbp',   0.15, 1.6);
+    ease('dbp',   0.15, 1.2);
+    ease('rr',    0.20, 0.5);
+    ease('temp',  0.06, 0.02);
+
+    // Derived value, never measured. (SBP + 2*DBP)/3, recorded with provenance.
+    this.vitals.map = Math.round((this.vitals.sbp + 2 * this.vitals.dbp) / 3);
+
+    // --- waveform phase -------------------------------------------------
+    // Advanced only in sample(). Advancing here as well would run the ECG and
+    // plethysmograph at double speed, because the display samples the same
+    // phase the model advances.
+    const bpm = Math.max(30, Math.min(180, this.vitals.hr));
+    this.currentBpm = bpm;
+
+    // --- NIBP cycle ------------------------------------------------------
+    this.nibpTimer -= dt;
+    if (this.nibpTimer <= 0) {
+      if (this.nibpPhase === 'idle') { this.nibpPhase = 'inflate'; this.nibpTimer = 4; }
+      else if (this.nibpPhase === 'inflate') { this.nibpPhase = 'deflate'; this.nibpTimer = 12; }
+      else {
+        this.nibpPhase = 'idle';
+        this.nibpTimer = 60 + r() * 90;   // 1–2.5 minute cycle
+      }
+    }
+  }
+
+  /**
+   * Advance one trace by dt seconds and return its current amplitude.
+   *
+   * Sampling is time-based rather than frame-based: a monitor sweep must run
+   * at a fixed paper speed (25 mm/s here) whatever the display refresh rate,
+   * or the trace silently means different things on different hardware.
+   */
+  sample(kind, dt) {
+    if (kind === 'resp') {
+      this.phase.resp = (this.phase.resp + (this.vitals.rr / 60) * dt) % 1;
+      return respiration(this.phase.resp);
+    }
+    const bpm = Math.max(30, Math.min(180, this.vitals.hr));
+    if (kind === 'ecg') {
+      this.phase.ecg = (this.phase.ecg + (bpm / 60) * dt) % 1;
+      return qrs(this.phase.ecg);
+    }
+    this.phase.pleth = (this.phase.pleth + (bpm / 60) * dt) % 1;
+    return pleth(this.phase.pleth);
+  }
+
+  /** Temporarily drive a parameter, for demonstration scenarios. */
+  perturb(key, value, seconds = 30) {
+    this.override[key] = value;
+    this.overrideUntil[key] = seconds;
+  }
+
+  /** Raise a device-condition fault, distinct from a physiological event. */
+  injectTechnical(text, seconds = 45) {
+    this.technicalText = text;
+    this.technicalUntil = seconds;
+  }
+
+  get activeTechnical() {
+    return this.technicalText && this.technicalUntil > 0 ? this.technicalText : null;
+  }
+
+  /** Current value plus LOINC code for each parameter. */
+  readings() {
+    const v = this.vitals;
+    return [
+      { code: '8867-4',  value: Math.round(v.hr) },
+      { code: '59408-5', value: Math.round(v.spo2) },
+      { code: '8480-6',  value: Math.round(v.sbp) },
+      { code: '8462-4',  value: Math.round(v.dbp) },
+      { code: '8478-0',  value: v.map },
+      { code: '8310-5',  value: Math.round(v.temp * 10) / 10 },
+      { code: '9279-1',  value: Math.round(v.rr) },
+    ];
+  }
+
+  /** Grade each reading against its limit set. Returns breaches only. */
+  breaches() {
+    const out = [];
+    for (const { code, value } of this.readings()) {
+      const lim = LIMITS[code];
+      if (!lim) continue;
+      if (value < lim.low)  out.push({ code, value, side: 'low',  limit: lim.low });
+      if (value > lim.high) out.push({ code, value, side: 'high', limit: lim.high });
+    }
+    return out;
+  }
+
+  snapshot() {
+    return {
+      t: Date.now(),
+      hr: Math.round(this.vitals.hr),
+      spo2: Math.round(this.vitals.spo2),
+      sbp: Math.round(this.vitals.sbp),
+      dbp: Math.round(this.vitals.dbp),
+      map: this.vitals.map,
+      temp: Math.round(this.vitals.temp * 10) / 10,
+      rr: Math.round(this.vitals.rr),
+    };
+  }
+}
+
+/* --------------------------------------------------------------- alarms */
+
+/** Clinical descriptors for a breach. Kept free of the parameter name so
+ *  the composed message does not read "SpO2 — SpO2 low". */
+const ALARM_TEXT = {
+  '59408-5': { hi: 'Supra-normal saturation', lo: 'Desaturation' },
+  '8867-4':  { hi: 'Tachycardia',             lo: 'Bradycardia' },
+  '8480-6':  { hi: 'Hypertension',            lo: 'Hypotension' },
+  '8462-4':  { hi: 'Hypertension',            lo: 'Hypotension' },
+  '8478-0':  { hi: 'Above target',            lo: 'Hypoperfusion' },
+  '8310-5':  { hi: 'Pyrexia',                 lo: 'Hypothermia' },
+  '9279-1':  { hi: 'Tachypnoea',              lo: 'Bradypnoea' },
+};
+
+/** Compose the text a nurse reads. */
+function describeBreach(code, value, side, limits) {
+  const m = PARAM_META[code];
+  const descriptor = ALARM_TEXT[code]?.[side === 'low' ? 'lo' : 'hi'] ?? `${side === 'low' ? 'Below' : 'Above'} limit`;
+  return `${m.label}: ${descriptor} — ${value}${m.unit} (limit ${limits.low}–${limits.high})`;
+}
+
+/**
+ * Excursion thresholds that raise MEDIUM and HIGH, per parameter, in that
+ * parameter's own units.
+ *
+ * This table exists because a single global threshold cannot work across
+ * mixed units, and trying it produces clinically wrong answers. An earlier
+ * version used one MEDIUM rule of "12 beyond the limit" for everything, which
+ * silently graded a saturation of 86% and a temperature of 38.5°C as LOW —
+ * the same bucket as a heart rate of 63 — because neither excursion reaches 12
+ * in its own units. A temperature excursion of 12 °C is not reachable at all,
+ * so pyrexia could never be MEDIUM by that route however high it rose.
+ *
+ * Excursion distance is therefore not comparable between parameters, and the
+ * grading has to be expressed per parameter. The bands below are the
+ * implementation of the risk matrix in report §7.4.2 — grade by the potential
+ * result of failing to respond — mapped onto each parameter's excursion:
+ *
+ *   - SpO₂ is graded aggressively because hypoxaemia kills quickly. Falling
+ *     below 85% is severe hypoxaemia and is HIGH at any excursion.
+ *   - Blood pressure grades on absolute value as well as excursion, because
+ *     a systolic of 70 is urgent even against a permissive limit.
+ *   - Heart rate uses the conventional bands.
+ *   - Temperature moves slowly and harms slowly, so it grades the least.
+ *
+ * Values are clinical judgement consistent with the limits in LIMITS above,
+ * not quoted from a paywalled clause; see report §4.9 for what is and is not
+ * verifiable.
+ */
+const EXCURSION = {
+  // code: { medium, high, highLow }  — the low column is the threshold for
+  // excursions in the alarming direction, which is the one that matters
+  // clinically for a downward trend.
+  '59408-5': { medium: 3, high: 5 },              // SpO2 %        — hypoxaemia
+  '8867-4':  { medium: 10, high: 30 },             // HR /min
+  '8480-6':  { medium: 15, high: 30 },             // systolic mmHg
+  '8462-4':  { medium: 10, high: 25 },             // diastolic mmHg
+  '8478-0':  { medium: 6, high: 15 },              // MAP mmHg — hypoperfusion
+  '8310-5':  { medium: 0.7, high: 1.5 },           // temp °C — slow harm
+  '9279-1':  { medium: 8, high: 15 },              // RR /min
+};
+
+/**
+ * Absolute values that are HIGH regardless of excursion. A permissive limit
+ * must not make an already-critical value look acceptable: a ward that has
+ * widened the SpO2 low limit to 88% should still escalate a reading of 84%.
+ */
+const ABSOLUTE_HIGH = {
+  '59408-5': { low: 85 },      // severe hypoxaemia
+  '8867-4':  { low: 40, high: 180 },
+  '8480-6':  { low: 70, high: 220 },
+  '8462-4':  { low: 40, high: 130 },
+  '8478-0':  { low: 50, high: 140 },
+};
+
+/**
+ * Grade a limit breach to an IEC 60601-1-8 alarm priority.
+ *
+ * `magnitude` is the unsigned distance beyond the limit, `side` says which
+ * way, and `value` is the reading itself — needed for the absolute-value
+ * rules, since excursion alone cannot express them. Keeping the direction
+ * explicit avoids the classic sign bug where a downward excursion silently
+ * never meets an upward threshold.
+ */
+function gradePriority(code, magnitude, side, value) {
+  const ex = magnitude;
+
+  // A value critical in its own right outranks any excursion measure.
+  const abs = ABSOLUTE_HIGH[code];
+  if (abs !== undefined && typeof value === 'number') {
+    if (side === 'low' && abs.low !== undefined && value <= abs.low) return 'HIGH';
+    if (side === 'high' && abs.high !== undefined && value >= abs.high) return 'HIGH';
+  }
+
+  const band = EXCURSION[code];
+  if (band === undefined) {
+    // Unrecognised code. Grade on excursion alone rather than defaulting to
+    // LOW, which would under-report an unknown parameter as unremarkable.
+    return ex >= 12 ? 'MEDIUM' : 'LOW';
+  }
+
+  if (ex >= band.high) return 'HIGH';
+  if (ex >= band.medium) return 'MEDIUM';
+  return 'LOW';
+}
+
+
+/* ==== js/audio.js ==== */
+/* =====================================================================
+   Audio for the patient monitoring system.
+
+   WHY THIS IS SYNTHESISED RATHER THAN A DOWNLOADED SOUND PACK
+   ------------------------------------------------------------
+   Real manufacturer alarm tones (Draeger, Philips, GE, Mindray, Nihon
+   Kohden) are proprietary product IP and are not lawfully distributable.
+   They were not used.
+
+   That is not a compromise. IEC 60601-1-8 specifies the alarm sounds
+   PARAMETRICALLY - fundamental frequency ranges, pulse durations, the
+   gap structure of the burst, and a tolerance on how closely the four
+   largest harmonics must sit together. It does not prescribe a waveform
+   file. That is by design: the requirement must be reproducible on a
+   cheap piezo sounder as well as on a mains-powered monitor. A faithful
+   implementation driven from the specification is therefore *more*
+   accurate than any single manufacturer's file, which is merely one
+   implementation of the same specification.
+
+   Sources for the numbers implemented here:
+     - IEC 60601-1-8:2006+A1:2012, Tables 1 and 2 (pulse and burst
+       parameters), reproduced freely in Texas Instruments application
+       literature SLOA273 and SSZT261.
+     - AMD2:2020 auditory icon and pointer clauses, via the PUI Audio
+       application guide.
+     - Edworthy (2023), Forum Acusticum, CC BY 3.0, for the design
+       rationale behind melodic differentiation.
+
+   WHAT IS DELIBERATELY ABSENT
+   ----------------------------
+   The exact Table 3 pulse repetition rates and the absolute minimum
+   sound pressure level remain paywalled, and at least one secondary
+   source states them incorrectly. Absolute SPL is in any case not
+   deliverable from a browser. The relative dynamic ladder is specified
+   here instead, and that is what makes the set legible.
+   ===================================================================== */
+
+/* ------------------------------------------------------- note frequencies */
+/* Equal temperament, A4 = 440 Hz. */
+const N = {
+  C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23, G4: 392.00,
+  A4: 440.00, B4: 493.88, C5: 523.25, D5: 587.33, E5: 659.25, G5: 783.99,
+  F5: 698.46, A5: 880.00,
+};
+
+/**
+ * Alarm categories and their melodies.
+ *
+ * A real monitor does not emit one generic alarm. The melody identifies the
+ * *category* - what is wrong - and the pulse count identifies the *priority* -
+ * how urgently. Cardiovascular, oxygenation, ventilation and temperature each
+ * carry their own melodic material, which is what lets a trained nurse know
+ * the kind of problem before reading the screen.
+ *
+ * MEDIUM is a three-pulse figure. HIGH is the five-note figure played twice,
+ * giving the ten pulses the standard requires.
+ */
+const CATEGORIES = {
+  cardiovascular: {
+    medium: [N.C4, N.E4, N.G4],          // c - e - g, the reserved cardiovascular melody
+    high:   [N.C4, N.E4, N.G4, N.G4, N.C5],   // c - e - g - g - C
+  },
+  oxygenation: {
+    medium: [N.C5, N.B4, N.A4],
+    high:   [N.C5, N.B4, N.A4, N.G4, N.F4],
+  },
+  ventilation: {
+    medium: [N.C4, N.A4, N.F4],
+    high:   [N.C4, N.A4, N.F4, N.A4, N.F4],
+  },
+  temperature: {
+    medium: [N.C4, N.D4, N.E4],
+    high:   [N.C4, N.D4, N.E4, N.E4, N.C5],
+  },
+  infusion: {
+    medium: [N.C5, N.D4, N.G4],
+    high:   [N.C5, N.D4, N.G4, N.G4, N.C5],
+  },
+  general: {
+    medium: [N.C4, N.C4, N.C4],
+    high:   [N.C4, N.C4, N.C4, N.C4, N.C4],
+  },
+};
+
+/** Map a LOINC parameter code to the alarm category it belongs to. */
+function categoryFor(code) {
+  switch (code) {
+    case '59408-5': return 'oxygenation';   // oxygen saturation
+    case '9279-1':  return 'ventilation';   // respiration
+    case '8310-5':  return 'temperature';
+    case '8867-4':
+    case '8480-6':
+    case '8462-4':
+    case '8478-0':  return 'cardiovascular';
+    default:        return 'general';
+  }
+}
+
+/* -------------------------------------------------- burst timing constants */
+/*
+ * IEC 60601-1-8 Tables 1 and 2. Values are the midpoint of each permitted
+ * range, which is what a manufacturer would select.
+ */
+const T = {
+  tdHigh:   0.146,   // HIGH pulse duration. Range 75-200 ms. 146 ms is the
+                      // value measured from a conforming reference tone.
+  tdMed:    0.200,   // MEDIUM and LOW pulse duration. Range 125-250 ms.
+  x:        0.124,   // Ordinary interpulse gap. Range 50-125 ms.
+  mid:      0.800,   // Gap between the 5th and 6th pulse. Range 0.35-1.30 s.
+  interHigh:  5.0,   // HIGH interburst interval. Range 2.5-15 s.
+  interMed:   9.0,   // MEDIUM interburst interval. Range 2.5-30 s.
+  interLow:   18.0,  // LOW interburst interval. Greater than 15 s.
+  rise:      0.10,   // Rise time as a fraction of pulse duration.
+};
+
+/* Relative levels. A lower-priority burst must never exceed a higher-priority
+ * one; that is normative, so it is expressed as a constant ladder rather than
+ * left to taste. Three to six decibels per step is the practical guidance. */
+const LEVEL_DB = { HIGH: 0, MEDIUM: -4, LOW: -8 };
+const INFO_OFFSET_DB = -18;   // pulse beep sits well below every alarm
+
+/* ----------------------------------------------------------- pulse tone */
+/*
+ * Measured from real conforming medical hardware: a "lub" at about 691 Hz
+ * and a "dub" at about 469 Hz. That interval is a perfect fifth, which is
+ * very close to the real lub-dub of the heart, and is why it reads as a
+ * heartbeat rather than as a beep.
+ */
+const LUB_HZ = 691;
+const DUB_HZ = 469;
+
+class AudioEngine {
+  constructor() {
+    this.ctx = null;
+    this.ready = false;
+    this.enabled = false;
+
+    this.master = 0.85;        // deliberately high; the alarm bus is normalised below
+    this.alarmVol = 0.85;
+    this.pulseVol = 0.5;
+
+    this.toneBedId = 'bed-001';
+    this.pulseOn = true;
+
+    this.alarmState = 'live';  // live | paused | off
+    this.pausedUntil = 0;
+
+    this.masterGain = null;
+    this.bus = {};
+    this._lastPhase = new Map();
+    this._announced = new Set();
+    this._sounding = new Map();
+    this._lastPlay = new Map();
+  }
+
+  /* ------------------------------------------------------------- setup */
+
+  async init() {
+    if (this.ctx) {
+      if (this.ctx.state === 'suspended') await this.ctx.resume();
+      return true;
+    }
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return false;
+
+    this.ctx = new AC();
+    if (this.ctx.state === 'suspended') await this.ctx.resume();
+
+    /* -- master chain: bus -> tone shaping -> soft clip -> compressor -> out -- */
+
+    this.masterGain = this.ctx.createGain();
+    this.masterGain.gain.value = this.master;
+
+    // Small-driver roll-off. Real sounders are piezo elements a couple of
+    // centimetres across and lose everything above roughly 4.5 kHz. Without
+    // this the harmonic stack sounds like a synthesiser.
+    this.tone = this.ctx.createBiquadFilter();
+    this.tone.type = 'lowpass';
+    this.tone.frequency.value = 4500;
+    this.tone.Q.value = 0.7;
+
+    // A gentle high-pass keeps the stack from sounding boomy on laptop speakers.
+    this.hp = this.ctx.createBiquadFilter();
+    this.hp.type = 'highpass';
+    this.hp.frequency.value = 180;
+
+    // Soft clip rather than hard clipping. The standard's test suite checks
+    // for both hard clipping and spectral-balance distortion.
+    this.shaper = this.ctx.createWaveShaper();
+    this.shaper.curve = makeSoftClipCurve(2048, 1.6);
+    this.shaper.oversample = '4x';
+
+    // Safety limiter so two simultaneous high-priority alarms cannot sum into
+    // a distorted wall of noise.
+    this.comp = this.ctx.createDynamicsCompressor();
+    this.comp.threshold.value = -6;
+    this.comp.knee.value = 6;
+    this.comp.ratio.value = 12;
+    this.comp.attack.value = 0.003;
+    this.comp.release.value = 0.18;
+
+    this.tone.connect(this.hp);
+    this.hp.connect(this.shaper);
+    this.shaper.connect(this.comp);
+    this.comp.connect(this.masterGain);
+    this.masterGain.connect(this.ctx.destination);
+
+    // One bus per priority, so the level ladder is applied once and cannot
+    // drift between paths.
+    for (const p of ['HIGH', 'MEDIUM', 'LOW']) {
+      const g = this.ctx.createGain();
+      g.gain.value = this.alarmVol * dbToGain(LEVEL_DB[p]);
+      g.connect(this.tone);
+      this.bus[p] = g;
+    }
+    const info = this.ctx.createGain();
+    info.gain.value = this.alarmVol * dbToGain(INFO_OFFSET_DB);
+    info.connect(this.tone);
+    this.bus.INFO = info;
+
+    this.wave = clinicalWave(this.ctx);
+    this.ready = true;
+    return true;
+  }
+
+  setMaster(v) {
+    this.master = v;
+    if (this.masterGain) this.masterGain.gain.value = v;
+  }
+
+  setAlarmVol(v) {
+    this.alarmVol = v;
+    if (!this.ready) return;
+    for (const p of ['HIGH', 'MEDIUM', 'LOW']) {
+      this.bus[p].gain.value = v * dbToGain(LEVEL_DB[p]);
+    }
+    this.bus.INFO.gain.value = v * dbToGain(INFO_OFFSET_DB);
+  }
+
+  async toggle() {
+    if (!this.ready) { const ok = await this.init(); if (!ok) return false; }
+    this.enabled = !this.enabled;
+    if (this.enabled && this.ctx.state === 'suspended') await this.ctx.resume();
+    return this.enabled;
+  }
+
+  get audible() { return this.enabled && this.alarmState !== 'off'; }
+
+  /* ------------------------------------------------------- pulse tone */
+
+  /**
+   * The heartbeat pip. Deliberately a two-part lub-dup rather than a single
+   * blip, because the two-part shape is what a real monitor produces and it
+   * is immediately recognisable. Slight per-beat variation keeps it from
+   * sounding machine-generated; identical repeats read as synthetic.
+   */
+  pulse(bed) {
+    if (!this.audible || !this.pulseOn || !this.pulseVol) return;
+    if (bed.id !== this.toneBedId) return;
+
+    const t = this.ctx.currentTime;
+    const bpm = Math.max(25, Math.min(200, bed.vitals.hr));
+    const interval = 60 / bpm;
+    const last = this._lastPlay.get('pulse') || 0;
+    if (t - last < interval * 0.55) return;   // refractory guard
+    this._lastPlay.set('pulse', t);
+
+    // Pitch tracks saturation. Higher saturation, higher tone.
+    const spo2 = Math.max(70, Math.min(100, bed.vitals.spo2));
+    const shift = Math.pow(2, (spo2 - 90) / 36);
+
+    // Saturation also pulls the level down slightly, so a falling saturation
+    // is audible before the number is read.
+    const level = this.pulseVol * (0.45 + 0.55 * ((spo2 - 70) / 30));
+
+    const jit = () => 1 + (Math.random() - 0.5) * 0.006;   // about +/-0.3%
+
+    this._pulse(LUB_HZ * shift * jit(), t, 0.105, level);
+    this._pulse(DUB_HZ * shift * jit(), t + 0.125, 0.155, level * 0.86);
+  }
+
+  _pulse(freq, at, dur, gain) {
+    this._blip({ at, freq, dur, gain, dest: this.bus.INFO, wave: this.wave, rise: 0.012 });
+  }
+
+  /* ------------------------------------------------------ alarm sounds */
+
+  alarm(alarm) {
+    if (!this.audible) return;
+    const now = this.ctx.currentTime;
+
+    const sounding = this._sounding.get(alarm.id);
+    if (sounding && sounding > now) return;
+
+    const last = this._lastPlay.get(alarm.priority) || 0;
+    if (now - last < 0.15) return;
+    this._lastPlay.set(alarm.priority, now);
+
+    const cat = alarm.kind === 'technical' ? 'general' : categoryFor(alarm.code);
+    let end = now;
+
+    switch (alarm.priority) {
+      case 'HIGH':     end = this._high(now, cat); break;
+      case 'MEDIUM':   end = this._medium(now, cat); break;
+      case 'LOW':      end = this._low(now); break;
+      default:         end = this._information(now); break;
+    }
+    this._sounding.set(alarm.id, end);
+  }
+
+  stopAlarm(id) { this._sounding.delete(id); }
+  stopAll() { this._sounding.clear(); this._lastPlay.clear(); }
+
+  /**
+   * HIGH priority: the five-note figure played twice, giving ten pulses.
+   * The gap between the fifth and the sixth falls at the long delay the
+   * standard specifies, which is what makes the two halves audible as one
+   * figure rather than as two.
+   */
+  _high(t0, category) {
+    const notes = CATEGORIES[category]?.high ?? CATEGORIES.general.high;
+    const td = T.tdHigh;
+    const x = T.x;
+    const twoXtd = 2 * x + td;
+
+    // [1-2, 2-3, 3-4, 4-5, 5-6, 6-7, 7-8, 8-9, 9-10]
+    const gaps = [x, x, twoXtd, x, T.mid, x, x, twoXtd, x];
+
+    let t = t0;
+    for (let i = 0; i < 10; i++) {
+      const f = notes[i % notes.length];
+      this._blip({ at: t, freq: f, dur: td, gain: 1, dest: this.bus.HIGH, wave: this.wave, rise: T.rise });
+      t += td + (gaps[i] ?? x);
+    }
+    return t + T.interHigh - td;
+  }
+
+  /** MEDIUM priority: three pulses, the category's melodic figure. */
+  _medium(t0, category) {
+    const notes = CATEGORIES[category]?.medium ?? CATEGORIES.general.medium;
+    const td = T.tdMed;
+    let t = t0;
+    for (const f of notes) {
+      this._blip({ at: t, freq: f, dur: td, gain: 1, dest: this.bus.MEDIUM, wave: this.wave, rise: T.rise });
+      t += td + T.x;
+    }
+    return t + T.interMed - td;
+  }
+
+  /**
+   * LOW priority: two pulses, a descending minor third. The low alarm is the
+   * rarest and the least urgent, so it repeats only every eighteen seconds.
+   */
+  _low(t0) {
+    const td = T.tdMed;
+    const notes = [N.E4, N.C4];
+    let t = t0;
+    for (const f of notes) {
+      this._blip({ at: t, freq: f, dur: td, gain: 1, dest: this.bus.LOW, wave: this.wave, rise: T.rise });
+      t += td + T.x;
+    }
+    return t + T.interLow - td;
+  }
+
+  /**
+   * Information signal. One short, soft, mid-register blip.
+   *
+   * Deliberately NOT alarm-shaped. The standard classes the saturation tone and
+   * the electrocardiogram waveform sound as information signals, not alarm
+   * signals, and they must never be confused with one.
+   */
+  _information(t0) {
+    this._blip({ at: t0, freq: N.C5, dur: 0.055, gain: 1, dest: this.bus.INFO, wave: null, rise: 0.008 });
+    return t0 + 0.4;
+  }
+
+  /* ------------------------------------------------------------- voice */
+
+  /** One enveloped tone on the harmonic stack, with a trapezoidal envelope. */
+  _blip({ at, freq, dur, gain, dest, wave, rise }) {
+    const ctx = this.ctx;
+    const osc = ctx.createOscillator();
+    const env = ctx.createGain();
+
+    if (wave) osc.setPeriodicWave(wave);
+    else osc.type = 'sine';
+    osc.frequency.value = freq;
+
+    const peak = Math.max(0.0002, gain * 0.75);
+    const tr = Math.max(0.006, dur * (rise ?? T.rise));
+    const tf = Math.min(0.030, dur * 0.25);
+
+    // Trapezoid: linear rise, sustain, exponential fall. A linear ramp all the
+    // way down sounds like a test tone; alarms are percussive.
+    env.gain.setValueAtTime(0.0001, at);
+    env.gain.linearRampToValueAtTime(peak, at + tr);
+    env.gain.setValueAtTime(peak, Math.max(at + tr + 0.001, at + dur - tf));
+    env.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+
+    osc.connect(env);
+    env.connect(dest);
+    osc.start(at);
+    osc.stop(at + dur + 0.02);
+  }
+
+  /* --------------------------------------------------- silence control */
+
+  /** Bounded pause. Auto-resumes; visibly different from a full mute. */
+  pauseAlarms(seconds = 120) {
+    this.alarmState = 'paused';
+    this.pausedUntil = Date.now() + seconds * 1000;
+    this.stopAll();
+  }
+
+  /** Indefinite silence. Requires an explicit act to end. */
+  muteAlarms() {
+    this.alarmState = 'off';
+    this.stopAll();
+  }
+
+  resumeAlarms() {
+    this.alarmState = 'live';
+    this.pausedUntil = 0;
+  }
+
+  tick() {
+    if (this.alarmState === 'paused' && Date.now() >= this.pausedUntil) {
+      this.alarmState = 'live';
+      return true;
+    }
+    return false;
+  }
+
+  /* ------------------------------------------------------- auditioning */
+
+  async audition(priority, category = 'cardiovascular') {
+    if (!this.ready) await this.init();
+    if (this.ctx.state === 'suspended') await this.ctx.resume();
+    this.stopAll();
+    const t = this.ctx.currentTime + 0.04;
+    if (priority === 'HIGH') this._high(t, category);
+    else if (priority === 'MEDIUM') this._medium(t, category);
+    else if (priority === 'LOW') this._low(t);
+    else this._information(t);
+  }
+
+  /** The pulse tone on its own, for demonstrating the heartbeat pip. */
+  async auditionPulse() {
+    if (!this.ready) await this.init();
+    if (this.ctx.state === 'suspended') await this.ctx.resume();
+    const t = this.ctx.currentTime + 0.04;
+    const bed = { id: 'preview', id_: 'preview', vitals: { hr: 78, spo2: 96 } };
+    this._pulse(LUB_HZ, t, 0.105, 0.5);
+    this._pulse(DUB_HZ, t + 0.125, 0.155, 0.43);
+    void bed;
+  }
+}
+
+/* ================================================================ utils */
+
+const dbToGain = db => Math.pow(10, db / 20);
+
+/**
+ * The clinical harmonic stack.
+ *
+ * This is the single most important parameter for making a synthesised alarm
+ * sound like a real one. Measured spectra of conforming alarm tones show
+ * harmonics 1 and 3 through 9 sitting within about 5.5 dB of each other, with
+ * the second partial some 26 dB down. A plain sine, or a naive 1-2-3-4 stack
+ * with even-numbered harmonics prominent, sounds thin and synthetic - which
+ * is precisely the complaint that a "normal" tone does not sound like
+ * hospital equipment.
+ *
+ * The flatness is itself a requirement: the four largest components must lie
+ * within 15 dB of each other, and the tolerance exists so that direct and
+ * reflected sound in a ward cannot cancel a particular partial and leave the
+ * alarm inaudible in some positions.
+ */
+function clinicalWave(ctx, { nH = 9, secondPartialDb = -26 } = {}) {
+  const real = new Float32Array(nH + 1);
+  const imag = new Float32Array(nH + 1);
+  for (let n = 1; n <= nH; n++) {
+    const db = n === 1 ? 0 : n === 2 ? secondPartialDb : 0;
+    imag[n] = Math.pow(10, db / 20);
+  }
+  return ctx.createPeriodicWave(real, imag, { disableNormalization: false });
+}
+
+/** tanh-style soft clipper. Kills digital harshness without hard-clipping. */
+function makeSoftClipCurve(n, drive) {
+  const curve = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const x = (i / (n - 1)) * 2 - 1;
+    curve[i] = Math.tanh(x * drive) / Math.tanh(drive);
+  }
+  return curve;
+}
+
+
+/* ==== js/store.js ==== */
+/* =====================================================================
+   Client state: beds, the alarm engine, and trend history.
+
+   The alarm engine here mirrors the obligations the design places on the
+   hub: grading, hysteresis so a value hovering on a limit does not
+   flap, acknowledgement by an identified operator, escalation when a
+   high-priority alarm is ignored, and the strict separation of
+   INFORMATION signals from alarm conditions.
+   ===================================================================== */
+
+
+let seq = 0;
+const uid = p => `${p}-${(++seq).toString(36)}`;
+
+/**
+ * Priority ordering. Exported so the display layer and the engine cannot
+ * disagree about which alarm matters most, and so a bundle has one copy.
+ */
+const RANK = { HIGH: 3, MEDIUM: 2, LOW: 1, INFORMATION: 0 };
+
+class Store {
+  constructor() {
+    this.beds = BED_SEEDS.map(c => new Bed(c));
+    this.alarms = [];
+    this.acknowledged = new Set();
+    this.operator = { id: 'staff-001', name: 'A. Menon', role: 'Charge Nurse' };
+    this.history = new Map();      // bedId -> [snapshot]
+    this.active = new Map();       // bedId|code -> alarm
+    this.events = [];              // audit trail
+    this.nibpStates = new Map();
+    this.lastSnapAt = 0;
+  }
+
+  get occupied() { return this.beds.filter(b => b.occupied); }
+
+  log(kind, text) {
+    this.events.unshift({ at: new Date(), kind, text });
+    if (this.events.length > 200) this.events.pop();
+  }
+
+  /* ------------------------------------------------------------- alarm */
+
+  /** Evaluate one bed and raise or clear alarms. Called every tick. */
+  evaluate(bed, now) {
+    if (!bed.occupied) return;
+    const live = new Set();
+
+    for (const b of bed.breaches()) {
+      const key = `${bed.id}|${b.code}`;
+      live.add(key);
+      const existing = this.active.get(key);
+
+      if (existing) {
+        existing.value = b.value;
+        existing.updatedAt = now;
+
+        // Re-grade on every tick. A patient who is deteriorating must
+        // escalate the alarm, not keep the priority it happened to be
+        // assigned when the condition was first detected.
+        const currentMagnitude = b.side === 'low' ? LIMITS[b.code].low - b.value
+                                                  : b.value - LIMITS[b.code].high;
+        const regraded = gradePriority(b.code, currentMagnitude, b.side, b.value);
+        const wasPriority = existing.priority;
+
+        // Refresh the text too. A nurse reading "89%" while the monitor shows
+        // 82% is worse than no message at all.
+        existing.message = describeBreach(b.code, b.value, b.side, LIMITS[b.code]);
+
+        if (RANK[regraded] > RANK[wasPriority]) {
+          existing.priority = regraded;
+          this.log('escalation', `${bed.label} · ${existing.label} escalated ${wasPriority} → ${regraded} at ${b.value}`);
+        } else if (RANK[regraded] < RANK[wasPriority]) {
+          // De-escalation is permitted, but only once the value has recovered
+          // properly, which the hysteresis band already guarantees.
+          existing.priority = regraded;
+          this.log('de-escalation', `${bed.label} · ${existing.label} reduced ${wasPriority} → ${regraded}`);
+        }
+
+        // Escalation on neglect: a high-priority alarm nobody has touched.
+        if (existing.priority === 'HIGH' && !existing.acknowledgedAt &&
+            (now - existing.raisedAt) / 1000 > 45) {
+          existing.escalationCount += 1;
+          this.log('escalation', `${existing.priority} alarm on ${bed.label} unattended for 45 s`);
+        }
+        continue;
+      }
+
+      // Hysteresis band: a value must clear the limit by this much before the
+      // alarm is considered resolved, otherwise it re-triggers on every tick.
+      const lim = LIMITS[b.code];
+      const backoff = b.side === 'low' ? b.value < lim.low + 2 : b.value > lim.high - 2;
+      if (existing === undefined && !backoff) { /* fall through to raise */ }
+
+      const magnitude = b.side === 'low' ? lim.low - b.value : b.value - lim.high;
+      const priority = gradePriority(b.code, magnitude, b.side, b.value);
+      const param = PARAM_META[b.code].label;
+
+      const alarm = {
+        id: uid('alm'),
+        bedId: bed.id,
+        bedLabel: bed.label,
+        patientName: bed.name,
+        code: b.code,
+        label: param,
+        priority,
+        kind: 'physiological',
+        // The parameter label is carried explicitly: systolic and diastolic
+        // pressure both breach on the same patient, and two identical
+        // "Hypotension" lines on one screen would be ambiguous.
+        message: describeBreach(b.code, b.value, b.side, lim),
+        value: b.value,
+        limit: b.limit,
+        raisedAt: now,
+        updatedAt: now,
+        acknowledgedAt: null,
+        acknowledgedBy: null,
+        clearedAt: null,
+        escalationCount: 0,
+      };
+      this.active.set(key, alarm);
+      this.alarms.unshift(alarm);
+      this.log('alarm', `${priority} · ${bed.label} · ${alarm.message}`);
+    }
+
+    // Clear alarms whose parameter has returned inside the hysteresis band.
+    for (const [key, alarm] of [...this.active]) {
+      if (live.has(key)) continue;
+      const bed = this.beds.find(b => b.id === alarm.bedId);
+      const reading = bed.readings().find(r => r.code === alarm.code);
+      if (reading === undefined) continue;
+      const lim = LIMITS[alarm.code];
+      const value = reading.value;
+      const stillLow = value < lim.low + 2;
+      const stillHigh = value > lim.high - 2;
+      if (stillLow || stillHigh) continue;
+
+      alarm.clearedAt = now;
+      this.active.delete(key);
+      this.log('cleared', `${alarm.bedLabel} · ${alarm.label} returned within limits`);
+    }
+  }
+
+  /**
+   * Device conditions are raised separately from physiological ones.
+   *
+   * A disconnected electrode is a fault in the equipment, not an event in the
+   * patient, and the design requires the two to be distinguishable at the
+   * station — conflating them is a documented route to alarm fatigue.
+   */
+  evaluateTechnical(bed, now) {
+    const text = bed.activeTechnical;
+    const key = `${bed.id}|__tech`;
+    const existing = this.active.get(key);
+
+    if (!text) {
+      if (existing) {
+        existing.clearedAt = now;
+        this.active.delete(key);
+        this.log('cleared', `${existing.bedLabel} · technical condition resolved`);
+      }
+      return;
+    }
+    if (existing) { existing.message = text; existing.updatedAt = now; return; }
+
+    const alarm = {
+      id: uid('tec'),
+      bedId: bed.id, bedLabel: bed.label, patientName: bed.name,
+      code: null, label: 'TECH', priority: 'MEDIUM', kind: 'technical',
+      message: text,
+      value: null, limit: null,
+      raisedAt: now, updatedAt: now,
+      acknowledgedAt: null, acknowledgedBy: null, clearedAt: null,
+      escalationCount: 0,
+    };
+    this.active.set(key, alarm);
+    this.alarms.unshift(alarm);
+    this.log('technical', `${bed.label} · ${text}`);
+  }
+
+  /** Acknowledge by the identified operator, per IEC 60601-1-8 audit needs. */
+  acknowledge(alarmId) {
+    const a = this.alarms.find(x => x.id === alarmId);
+    if (!a || a.acknowledgedAt) return;
+    a.acknowledgedAt = Date.now();
+    a.acknowledgedBy = this.operator;
+    this.acknowledged.add(alarmId);
+    this.log('ack', `${a.bedLabel} · ${a.label} acknowledged by ${this.operator.name}`);
+  }
+
+  acknowledgeAll() {
+    const open = this.alarms.filter(a => !a.acknowledgedAt && !a.clearedAt);
+    for (const a of open) this.acknowledge(a.id);
+    this.log('ack', `All open alarms acknowledged by ${this.operator.name}`);
+  }
+
+  /** Push an INFORMATION signal. Explicitly not an alarm condition. */
+  inform(bed, text) {
+    const sig = {
+      id: uid('sig'),
+      bedId: bed.id, bedLabel: bed.label, patientName: bed.name,
+      code: null, label: 'INFO', priority: 'INFORMATION', kind: 'system',
+      message: text, value: null, limit: null,
+      raisedAt: Date.now(), updatedAt: Date.now(),
+      acknowledgedAt: null, acknowledgedBy: null, clearedAt: Date.now(),
+      escalationCount: 0,
+    };
+    this.alarms.unshift(sig);
+    this.log('signal', `${bed.label} · ${text}`);
+  }
+
+  get open()  { return this.alarms.filter(a => !a.clearedAt && !a.acknowledgedAt); }
+  get unacked(){ return this.alarms.filter(a => !a.acknowledgedAt && !a.priority.includes('INFORMATION')); }
+
+  /* ----------------------------------------------------------- history */
+
+  record() {
+    const now = Date.now();
+    for (const bed of this.beds) {
+      if (!bed.occupied) continue;
+      if (!this.history.has(bed.id)) this.history.set(bed.id, []);
+      const arr = this.history.get(bed.id);
+      arr.push(bed.snapshot());
+      if (arr.length > 360) arr.shift();   // 60 minutes at 10 s resolution
+    }
+    this.lastSnapAt = now;
+  }
+
+  historyFor(bedId) { return this.history.get(bedId) || []; }
+
+  /* ------------------------------------------------------------- drive */
+
+  step(dt) {
+    const now = Date.now();
+    for (const bed of this.beds) bed.tick(dt);
+    for (const bed of this.beds) this.evaluate(bed, now);
+    for (const bed of this.beds) this.evaluateTechnical(bed, now);
+
+    if (now - this.lastSnapAt >= 10000) this.record();
+  }
+
+  /* ------------------------------------------ demonstration scenarios */
+
+  /** Drive a specific clinical event so a walkthrough is reproducible. */
+  demo(kind) {
+    const bed = this.beds[0];
+    const t = this.log.bind(this);
+
+    switch (kind) {
+      case 'desat':
+        bed.perturb('spo2', 82, 30);
+        t('scenario', 'SpO₂ driven to 82% on BED-01 — expect a HIGH priority alarm');
+        break;
+      case 'tachy':
+        bed.perturb('hr', 168, 30);
+        bed.perturb('rr', 32, 30);
+        t('scenario', 'HR driven to 168 bpm on BED-01 — expect a HIGH priority alarm');
+        break;
+      case 'hypotension':
+        bed.perturb('sbp', 72, 30);
+        bed.perturb('dbp', 44, 30);
+        t('scenario', 'Pressure driven to 72/44 on BED-01 — expect a MEDIUM priority alarm');
+        break;
+      case 'technical':
+        bed.injectTechnical('ECG lead off: RA electrode disconnected');
+        t('scenario', 'Electrodes disconnected on BED-01 — a device condition, not a patient event');
+        break;
+      case 'info':
+        this.inform(bed, 'Temperature probe re-sited by A. Menon');
+        break;
+      case 'reset':
+        for (const b of this.beds) { b.override = {}; b.overrideUntil = {}; b.technicalText = null; b.technicalUntil = 0; }
+        t('scenario', 'All injected scenarios cleared');
+        break;
+    }
+  }
+}
+
+
+/* ==== js/scope-data.js ==== */
+/* Generated by tools/scope-audit.mjs --write. Do not edit. */
+const SCOPE_DATA = {
+  "generatedAt": "2026-10-27T02:55:17.478Z",
+  "goals": [
+    {
+      "id": "G1",
+      "phase": 1,
+      "goal": "Physical ward design — safe, functional 5-bed layout with instrumented bedside units",
+      "ok": true,
+      "evidence": [
+        {
+          "file": "report/02_ward_layout.md",
+          "ok": true,
+          "note": "zoning, clearance, bonding, hand hygiene"
+        },
+        {
+          "file": "figures/m3_ward_layout.svg",
+          "ok": true,
+          "note": "five beds and the station"
+        },
+        {
+          "file": "report/02_ward_layout.md",
+          "ok": true,
+          "note": "VOC diathermy handled"
+        },
+        {
+          "file": "report/appendices/A_requirements_checklist.md",
+          "ok": true,
+          "note": "environmental constraints traced"
+        }
+      ]
+    },
+    {
+      "id": "G2",
+      "phase": 2,
+      "goal": "Centralised monitoring — all beds feed live vitals to a single nurse-station hub",
+      "ok": true,
+      "evidence": [
+        {
+          "file": "report/04_system_architecture.md",
+          "ok": true,
+          "note": "DAS classification"
+        },
+        {
+          "file": "report/04_system_architecture.md",
+          "ok": true,
+          "note": "latency budget, transport, time sync"
+        },
+        {
+          "file": "figures/m4_block_diagram.svg",
+          "ok": true,
+          "note": "block, alarm path, ack loop"
+        },
+        {
+          "file": "frontend/index.html",
+          "ok": true,
+          "note": "working centralised display"
+        }
+      ]
+    },
+    {
+      "id": "G3",
+      "phase": 3,
+      "goal": "Digital health integration — ABHA registration and MongoDB-backed record sync",
+      "ok": true,
+      "evidence": [
+        {
+          "file": "report/06_digital_health.md",
+          "ok": true,
+          "note": "identity, check digit, consent state, record type"
+        },
+        {
+          "file": "report/06_digital_health.md",
+          "ok": true,
+          "note": "R4 and sync pattern"
+        },
+        {
+          "file": "figures/m6_data_flow.svg",
+          "ok": true,
+          "note": "four-stage flow"
+        },
+        {
+          "file": "report/05_data_model.md",
+          "ok": true,
+          "note": "outbox + tombstone in the schema"
+        },
+        {
+          "file": "db/01_schema.sql",
+          "ok": true,
+          "note": "erasure path enforced, not just described"
+        }
+      ]
+    },
+    {
+      "id": "G4",
+      "phase": 2,
+      "goal": "Data modelling — full RDBMS schema covering patients, vitals, alerts and staff",
+      "ok": true,
+      "evidence": [
+        {
+          "file": "db/01_schema.sql",
+          "ok": true,
+          "note": "all six briefed tables"
+        },
+        {
+          "file": "db/01_schema.sql",
+          "ok": true,
+          "note": "brief-mandated composite index"
+        },
+        {
+          "file": "db/01_schema.sql",
+          "ok": true,
+          "note": "constraints present"
+        },
+        {
+          "file": "figures/m5_er_diagram.svg",
+          "ok": true,
+          "note": "ER diagram"
+        },
+        {
+          "file": "report/05_data_model.md",
+          "ok": true,
+          "note": "derived-value provenance"
+        }
+      ]
+    },
+    {
+      "id": "G5",
+      "phase": 4,
+      "goal": "HMS linkage — admission, billing and inventory into hospital-wide systems",
+      "ok": true,
+      "evidence": [
+        {
+          "file": "report/07_hms_integration.md",
+          "ok": true,
+          "note": "all three domains"
+        },
+        {
+          "file": "report/07_hms_integration.md",
+          "ok": true,
+          "note": "alarm severity across systems"
+        },
+        {
+          "file": "figures/m7_hms_integration.svg",
+          "ok": true,
+          "note": "integration map"
+        },
+        {
+          "file": "db/01_schema.sql",
+          "ok": true,
+          "note": "ledger tables"
+        }
+      ]
+    }
+  ],
+  "milestones": [
+    {
+      "id": "M1",
+      "phase": 1,
+      "name": "Requirements checklist",
+      "deliverable": "One-page checklist",
+      "ok": true,
+      "evidence": [
+        {
+          "file": "report/appendices/A_requirements_checklist.md",
+          "ok": true,
+          "note": "F / N / E / standards blocks"
+        }
+      ]
+    },
+    {
+      "id": "M2",
+      "phase": 1,
+      "name": "Instrument specification",
+      "deliverable": "Spec table with signal, power, isolation",
+      "ok": true,
+      "evidence": [
+        {
+          "file": "report/03_instrument_specs.md",
+          "ok": true,
+          "note": "the three briefed attributes"
+        },
+        {
+          "file": "report/03_instrument_specs.md",
+          "ok": true,
+          "note": "all four instruments"
+        },
+        {
+          "file": "report/03_instrument_specs.md",
+          "ok": true,
+          "note": "correct particular standards"
+        }
+      ]
+    },
+    {
+      "id": "M3",
+      "phase": 2,
+      "name": "Ward layout and electrode diagram",
+      "deliverable": "Layout schematic + electrode diagram",
+      "ok": true,
+      "evidence": [
+        {
+          "file": "report/02_ward_layout.md",
+          "ok": true,
+          "note": "electrodes and grounding points"
+        },
+        {
+          "file": "figures/m3_ward_layout.svg",
+          "ok": true,
+          "note": "floor plan"
+        },
+        {
+          "file": "figures/m3_electrode_12lead.svg",
+          "ok": true,
+          "note": "ten electrodes"
+        },
+        {
+          "file": "report/appendices/B_electrode_placement.md",
+          "ok": true,
+          "note": "derivation reference"
+        }
+      ]
+    },
+    {
+      "id": "M4",
+      "phase": 2,
+      "name": "System architecture diagram",
+      "deliverable": "Labelled block diagram with alarm and ack paths",
+      "ok": true,
+      "evidence": [
+        {
+          "file": "report/04_system_architecture.md",
+          "ok": true,
+          "note": "architecture argued"
+        },
+        {
+          "file": "figures/m4_block_diagram.svg",
+          "ok": true,
+          "note": "labelled with both paths"
+        }
+      ]
+    },
+    {
+      "id": "M5",
+      "phase": 2,
+      "name": "RDBMS schema design",
+      "deliverable": "ER diagram + schema DDL",
+      "ok": true,
+      "evidence": [
+        {
+          "file": "db/01_schema.sql",
+          "ok": true,
+          "note": "FKs, indexes, constraints"
+        },
+        {
+          "file": "figures/m5_er_diagram.svg",
+          "ok": true,
+          "note": "ER diagram"
+        },
+        {
+          "file": "report/05_data_model.md",
+          "ok": true,
+          "note": "schema discussed"
+        }
+      ]
+    },
+    {
+      "id": "M6",
+      "phase": 3,
+      "name": "Digital health flow",
+      "deliverable": "Data flow diagram",
+      "ok": true,
+      "evidence": [
+        {
+          "file": "report/06_digital_health.md",
+          "ok": true,
+          "note": "flow documented"
+        },
+        {
+          "file": "figures/m6_data_flow.svg",
+          "ok": true,
+          "note": "four-stage diagram"
+        },
+        {
+          "file": "report/06_digital_health.md",
+          "ok": true,
+          "note": "LOINC mapping"
+        }
+      ]
+    },
+    {
+      "id": "M7",
+      "phase": 3,
+      "name": "HMS integration design",
+      "deliverable": "Integration map",
+      "ok": true,
+      "evidence": [
+        {
+          "file": "report/07_hms_integration.md",
+          "ok": true,
+          "note": "triggers and ledger"
+        },
+        {
+          "file": "figures/m7_hms_integration.svg",
+          "ok": true,
+          "note": "integration map"
+        }
+      ]
+    },
+    {
+      "id": "M8",
+      "phase": 4,
+      "name": "Draft all sections",
+      "deliverable": "Full 8-section document",
+      "ok": true,
+      "evidence": [
+        {
+          "file": "report/01_introduction.md",
+          "ok": true
+        },
+        {
+          "file": "report/02_ward_layout.md",
+          "ok": true
+        },
+        {
+          "file": "report/03_instrument_specs.md",
+          "ok": true
+        },
+        {
+          "file": "report/04_system_architecture.md",
+          "ok": true
+        },
+        {
+          "file": "report/05_data_model.md",
+          "ok": true
+        },
+        {
+          "file": "report/06_digital_health.md",
+          "ok": true
+        },
+        {
+          "file": "report/07_hms_integration.md",
+          "ok": true
+        },
+        {
+          "file": "report/08_safety_standards.md",
+          "ok": true
+        }
+      ]
+    },
+    {
+      "id": "M9",
+      "phase": 4,
+      "name": "Review and finalise",
+      "deliverable": "Submission-ready document",
+      "ok": true,
+      "evidence": [
+        {
+          "file": "README.md",
+          "ok": true,
+          "note": "build and verify documented"
+        },
+        {
+          "file": "dist/PMS_Report.md",
+          "ok": true,
+          "note": "assembled submission document"
+        },
+        {
+          "file": "build/status.json",
+          "ok": true,
+          "note": "gate verdict"
+        }
+      ]
+    }
+  ],
+  "goalSummary": {
+    "total": 5,
+    "satisfied": 5,
+    "missing": 0
+  },
+  "milestoneSummary": {
+    "total": 9,
+    "satisfied": 9,
+    "missing": 0
+  },
+  "phaseSummary": {
+    "total": 4,
+    "satisfied": 4,
+    "missing": 0
+  }
+};
+
+
+/* ==== js/app.js ==== */
+/* =====================================================================
+   Rendering and application shell.
+   ===================================================================== */
+
+
+
+
+
+const store = new Store();
+const audio = new AudioEngine();
+const $  = (s, r = document) => r.querySelector(s);
+const $ = (s, r = document) => [...r.querySelectorAll(s)];
+
+/* ------------------------------------------------- waveform sweep buffer */
+
+/**
+ * Each live trace owns an offscreen canvas that is shifted one pixel left
+ * per frame and drawn into at the right edge. That produces the wiping
+ * sweep a clinician expects from a monitor; a scrolling redraw does not
+ * look like the equipment it is emulating.
+ */
+class Sweep {
+  constructor(w = 620, h = 34) {
+    this.cv = document.createElement('canvas');
+    this.cv.width = w; this.cv.height = h;
+    this.ctx = this.cv.getContext('2d', { willReadFrequently: false });
+    this.ctx.fillStyle = '#0a0f15';
+    this.ctx.fillRect(0, 0, w, h);
+    this.acc = 0;
+    this.filled = 0;
+    this.lastY = h / 2;
+  }
+
+  /** Map an amplitude, nominally 0..1, to a y coordinate. */
+  y(v) {
+    const c = this.cv.height;
+    return c - v * c * 0.80 - c * 0.10;
+  }
+
+  push(value, colour) {
+    const { ctx, cv } = this;
+    const x = cv.width - 1;
+
+    // Shift the existing trace one pixel left.
+    ctx.globalCompositeOperation = 'copy';
+    ctx.drawImage(cv, -1, 0);
+    ctx.globalCompositeOperation = 'source-over';
+
+    // Draw only the segment joining the previous sample to this one.
+    // Extending each column down to the canvas floor floods the buffer into
+    // a solid block and destroys the trace within about a second.
+    const yPos = this.y(value);
+    ctx.strokeStyle = colour;
+    ctx.lineWidth = 1.4;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x - 1, this.lastY);
+    ctx.lineTo(x, yPos);
+    ctx.stroke();
+
+    this.lastY = yPos;
+    if (this.filled < cv.width) this.filled++;
+  }
+
+  /** Flat baseline, for a bed with no patient attached. */
+  idle(colour = '#1e2833') {
+    const { ctx, cv } = this;
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.strokeStyle = colour;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, cv.height / 2);
+    ctx.lineTo(cv.width, cv.height / 2);
+    ctx.stroke();
+  }
+
+  reset() {
+    this.ctx.fillStyle = '#0a0f15';
+    this.ctx.fillRect(0, 0, this.cv.width, this.cv.height);
+    this.filled = 0;
+    this.lastY = this.cv.height / 2;
+  }
+}
+
+/* ------------------------------------------------------------ bed tiles */
+
+const sweeps = new Map();
+
+function bedTile(bed) {
+  // Ensure each live trace has its sweep buffer before the tile is rendered.
+  if (!sweeps.has(bed.id)) sweeps.set(bed.id, {});
+  for (const k of ['ecg', 'pleth', 'resp']) {
+    if (!sweeps.get(bed.id)[k]) sweeps.get(bed.id)[k] = new Sweep();
+  }
+
+  const readings = bed.readings();
+  const breachSet = new Set(bed.breaches().map(b => b.code));
+
+  // Show the most severe open alarm for this bed, never merely the newest.
+  // A tile that displays MEDIUM while a HIGH alarm is active for the same
+  // patient is exactly the mis-prioritisation this design has to prevent.
+  const topAlarm = store.open
+    .filter(a => a.bedId === bed.id && a.priority !== 'INFORMATION')
+    .sort((a, b) => RANK[b.priority] - RANK[a.priority])[0] || null;
+
+  const chip = bed.operationalStatus === 'O' ? 'chip--occ'
+             : bed.operationalStatus === 'X' ? 'chip--oos' : 'chip--free';
+  const chipText = { O: 'Occupied', U: 'Unoccupied', X: 'Out of service' }[bed.operationalStatus];
+
+  const nums = readings.map(r => {
+    const m = PARAM_META[r.code];
+    const breach = breachSet.has(r.code);
+    const limit = LIMITS[r.code];
+    // The unit sits on its own line rather than inline. Seven parameters
+    // across a two-up tile leaves roughly 60 px per column, and "106/min"
+    // set inline at that width clips to "106/ni".
+    return `<div class="num" data-p="${m.key}" data-breach="${breach}">
+      <div class="num__v">${bed.occupied ? r.value : '--'}</div>
+      <div class="num__u">${m.unit}</div>
+      <div class="num__k">${m.label}<span class="num__lim">${bed.occupied
+        ? (breach ? 'BREACH' : `${limit.low}–${limit.high}`) : ''}</span></div>
+    </div>`;
+  }).join('');
+
+  const wave = (k, tag, colour, label) => `
+    <div class="wave">
+      <span class="wave__tag" style="color:${colour}">${tag}</span>
+      <canvas data-bed="${bed.id}" data-kind="${k}" role="img"
+              aria-label="${label}" width="620" height="34"></canvas>
+    </div>`;
+
+  const who = bed.occupied ? `${bed.name}, ${bed.sex}${bed.age}` : 'no patient';
+
+  return `
+  <article class="bed" data-status="${bed.operationalStatus}" data-alarm="${topAlarm ? topAlarm.priority : ''}" data-bedid="${bed.id}"
+           aria-label="Bed ${bed.label}, ${who}">
+    <header class="bed__hdr">
+      <span class="bed__id">${bed.label}</span>
+      ${bed.occupied
+        ? `<span class="bed__pt">${bed.name}</span><span class="bed__meta">${bed.mrn} · ${bed.sex}${bed.age}</span>`
+        : `<span class="bed__pt" style="color:var(--fg-faint)">No patient assigned</span>`}
+      <span class="bed__spacer"></span>
+      <span class="chip ${chip}">${chipText}</span>
+    </header>
+
+    <div class="waves">
+      ${wave('ecg', 'II', 'var(--ecg)', `Lead II electrocardiogram, ${bed.occupied ? Math.round(bed.vitals.hr) + ' beats per minute' : 'no patient'}`)}
+      ${wave('pleth', 'PLETH', 'var(--spo2)', `Plethysmogram, oxygen saturation ${bed.occupied ? Math.round(bed.vitals.spo2) + ' percent' : 'unavailable'}`)}
+      ${wave('resp', 'RESP', 'var(--resp)', `Respiration, ${bed.occupied ? Math.round(bed.vitals.rr) + ' breaths per minute' : 'unavailable'}`)}
+    </div>
+
+    <div class="nums">${nums}</div>
+
+    ${topAlarm ? `
+      <div class="alarmbar" data-p="${topAlarm.priority}" role="alert">
+        <span>${topAlarm.priority}</span>
+        <span>${topAlarm.message}</span>
+        <button data-ack="${topAlarm.id}">Acknowledge</button>
+      </div>` : ''}
+  </article>`;
+}
+
+function renderDashboard() {
+  $('#beds').innerHTML = store.beds.map(bedTile).join('');
+  bindWaves();
+  renderRail();
+}
+
+/* ------------------------------------------------------------ alarm rail */
+
+function renderRail() {
+  // The list a nurse reads is ordered by severity first and recency second.
+  // Sorting by time alone would bury a HIGH alarm under a stream of LOWs.
+  const list = [...store.alarms]
+    .sort((a, b) => {
+      const rank = RANK[b.priority] - RANK[a.priority];
+      if (rank !== 0) return rank;
+      const acked = (a.acknowledgedAt ? 1 : 0) - (b.acknowledgedAt ? 1 : 0);
+      if (acked !== 0) return acked;
+      return b.raisedAt - a.raisedAt;
+    })
+    .slice(0, 40);
+
+  $('#railList').innerHTML = list.map(a => `
+    <div class="alm" data-p="${a.priority}" data-ack="${a.acknowledgedAt ? 'true' : 'false'}" data-alid="${a.id}">
+      <div class="alm__top">
+        <span class="alm__bed">${a.bedLabel}</span>
+        <span class="alm__pri">${a.priority}</span>
+        <span class="alm__t">${new Date(a.raisedAt).toLocaleTimeString('en-GB')}</span>
+      </div>
+      <div class="alm__msg">${a.message}</div>
+      <div class="alm__kind">${a.kind} · ${a.label}${a.escalationCount ? ` · escalated ×${a.escalationCount}` : ''}${a.acknowledgedBy ? ` · ack ${a.acknowledgedBy.name}` : ''}</div>
+      ${!a.acknowledgedAt && a.priority !== 'INFORMATION'
+        ? `<button class="alm__ack" data-ack="${a.id}">Acknowledge as ${store.operator.name}</button>` : ''}
+    </div>`).join('');
+
+  const open = store.open.filter(a => a.priority !== 'INFORMATION').length;
+  $('#railCount').textContent = open === 0 ? 'all clear' : `${open} open`;
+  $('#badge').textContent = open;
+  $('#badge').style.display = open ? '' : 'none';
+
+  // Empty state, so an empty rail reads as intentional rather than broken.
+  $('#railEmpty').style.display = list.length ? 'none' : '';
+
+  // The narrow-screen toggle must carry the count. If it does not, an alarm
+  // can be entirely off-screen with no indication that it exists.
+  const tb = $('#railToggleBadge');
+  if (tb) {
+    tb.textContent = String(open);
+    tb.dataset.zero = String(open === 0);
+  }
+}
+
+/* ----------------------------------------------------------- trend view */
+
+function sparkPath(values, w, h, min, max, pad = 6) {
+  if (!values.length) return '';
+  const lo = min ?? Math.min(...values);
+  const hi = max ?? Math.max(...values);
+  const span = (hi - lo) || 1;
+  return values.map((v, i) => {
+    const x = pad + (i / (values.length - 1 || 1)) * (w - pad * 2);
+    const y = h - pad - ((v - lo) / span) * (h - pad * 2);
+    return `${i ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join('');
+}
+
+function trendChart(bedId, key, label, colour, unit, limits) {
+  const rows = store.historyFor(bedId);
+  const W = 1000, H = 190;
+  const vals = rows.map(r => r[key]);
+  const lo = limits ? Math.min(limits.low, ...vals) : undefined;
+  const hi = limits ? Math.max(limits.high, ...vals) : undefined;
+
+  const grid = [0.25, 0.5, 0.75].map(f =>
+    `<line x1="6" y1="${(H * f).toFixed(0)}" x2="${W - 6}" y2="${(H * f).toFixed(0)}" stroke="#18202a" stroke-width="1"/>`).join('');
+
+  const band = limits
+    ? `<rect x="6" y="${(H - 6 - ((limits.high - (lo ?? 0)) / ((hi ?? 1) - (lo ?? 0))) * (H - 12)).toFixed(1)}"
+             width="${W - 12}" height="${(((limits.high - limits.low) / ((hi ?? 1) - (lo ?? 0))) * (H - 12)).toFixed(1)}"
+             fill="${colour}" opacity="0.06"/>` : '';
+
+  return `
+  <div class="card">
+    <div class="card__hd">${label} <span style="color:var(--fg-faint);text-transform:none;letter-spacing:0">· ${bedId}</span></div>
+    <div class="card__bd">
+      <svg class="trend" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+        ${grid}${band}
+        ${limits ? `<line x1="6" y1="${(H - 6 - ((limits.high - (lo ?? 0)) / ((hi ?? 1) - (lo ?? 0))) * (H - 12)).toFixed(1)}" x2="${W - 6}" y2="${(H - 6 - ((limits.high - (lo ?? 0)) / ((hi ?? 1) - (lo ?? 0))) * (H - 12)).toFixed(1)}" stroke="${colour}" stroke-width="1" stroke-dasharray="4 4" opacity=".55"/>` : ''}
+        ${limits ? `<line x1="6" y1="${(H - 6 - ((limits.low - (lo ?? 0)) / ((hi ?? 1) - (lo ?? 0))) * (H - 12)).toFixed(1)}" x2="${W - 6}" y2="${(H - 6 - ((limits.low - (lo ?? 0)) / ((hi ?? 1) - (lo ?? 0))) * (H - 12)).toFixed(1)}" stroke="${colour}" stroke-width="1" stroke-dasharray="4 4" opacity=".55"/>` : ''}
+        <path d="${sparkPath(vals, W, H, lo, hi)}" fill="none" stroke="${colour}" stroke-width="1.8"/>
+      </svg>
+      <div class="legend">
+        <span><b style="background:${colour}"></b>${label} (${unit})</span>
+        ${limits ? `<span style="color:var(--fg-faint)">dashed = alarm limits ${limits.low}–${limits.high}</span>` : ''}
+        <span style="margin-left:auto;color:var(--fg-faint)">${vals.length} samples · 60 min window</span>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderTrends() {
+  const bed = store.occupied[0];
+  $('#trends').innerHTML = `
+    <div class="grid2">
+      ${trendChart(bed.label, 'hr',   'Heart rate',   'var(--ecg)',  '/min', LIMITS['8867-4'])}
+      ${trendChart(bed.label, 'spo2', 'Oxygen saturation', 'var(--spo2)', '%', LIMITS['59408-5'])}
+      ${trendChart(bed.label, 'sbp',  'Systolic pressure', 'var(--nibp)', 'mmHg', LIMITS['8480-6'])}
+      ${trendChart(bed.label, 'temp', 'Body temperature', 'var(--temp)', '°C', LIMITS['8310-5'])}
+    </div>`;
+}
+
+/* ----------------------------------------------------------- ward view */
+
+function renderWard() {
+  const W = 980, H = 470;
+  const bedBox = (b, x, y) => {
+    const alarm = store.open.find(a => a.bedId === b.id);
+    const stroke = b.operationalStatus === 'X' ? '#ff3b3b'
+                 : alarm ? `var(--${alarm.priority.toLowerCase()})` : '#1e2833';
+    const fill = b.operationalStatus === 'O' ? '#151d27' : '#0f151d';
+    const readings = b.readings();
+    const get = c => readings.find(r => r.code === c)?.value;
+    return `
+    <g>
+      <rect x="${x}" y="${y}" width="150" height="128" rx="7"
+            fill="${fill}" stroke="${stroke}" stroke-width="${alarm ? 2 : 1.2}"/>
+      <text x="${x + 12}" y="${y + 22}" fill="#d7e0ea" font-size="12" font-weight="700">${b.label}</text>
+      <text x="${x + 138}" y="${y + 22}" fill="${stroke}" font-size="9.5" text-anchor="end" font-weight="700">
+        ${b.operationalStatus === 'O' ? 'OCCUPIED' : b.operationalStatus === 'X' ? 'OUT OF SERVICE' : 'FREE'}
+      </text>
+      <text x="${x + 12}" y="${y + 38}" fill="#8b9aab" font-size="10">${b.name || 'No patient'}</text>
+      ${b.occupied ? `
+      <text x="${x + 12}" y="${y + 64}" fill="var(--ecg)" font-size="15" font-weight="700">${get('8867-4')}<tspan font-size="9" fill="#5a6875"> bpm</tspan></text>
+      <text x="${x + 84}" y="${y + 64}" fill="var(--spo2)" font-size="15" font-weight="700">${get('59408-5')}<tspan font-size="9" fill="#5a6875"> %</tspan></text>
+      <text x="${x + 12}" y="${y + 88}" fill="var(--nibp)" font-size="13" font-weight="700">${get('8480-6')}/${get('8462-4')}<tspan font-size="9" fill="#5a6875"> mmHg</tspan></text>
+      <text x="${x + 12}" y="${y + 108}" fill="var(--temp)" font-size="13" font-weight="700">${get('8310-5')}<tspan font-size="9" fill="#5a6875"> °C</tspan></text>
+      <text x="${x + 84}" y="${y + 108}" fill="var(--resp)" font-size="13" font-weight="700">${get('9279-1')}<tspan font-size="9" fill="#5a6875"> /min</tspan></text>`
+      : `<text x="${x + 12}" y="${y + 70}" fill="#3a4654" font-size="11">Bed reserved, outlets live</text>`}
+      ${alarm ? `<rect x="${x}" y="${y + 118}" width="150" height="10" rx="3" fill="${stroke}" opacity=".85"/>` : ''}
+    </g>`;
+  };
+
+  $('#ward').innerHTML = `
+  <div class="card">
+    <div class="card__hd">Ward ICU-A · 5 beds · plan view</div>
+    <div class="card__bd">
+      <svg class="wardmap" viewBox="0 0 ${W} ${H}">
+        <rect x="10" y="10" width="${W - 20}" height="${H - 20}" fill="#0a0f15" stroke="#1e2833" stroke-width="2" rx="4"/>
+
+        <rect x="26" y="26" width="150" height="128" fill="none" stroke="#b45309" stroke-width="1" stroke-dasharray="5 4" rx="6"/>
+        <rect x="196" y="26" width="150" height="128" fill="none" stroke="#b45309" stroke-width="1" stroke-dasharray="5 4" rx="6"/>
+        <rect x="366" y="26" width="150" height="128" fill="none" stroke="#b45309" stroke-width="1" stroke-dasharray="5 4" rx="6"/>
+        <text x="26" y="20" fill="#b45309" font-size="9" font-weight="700">PATIENT SAFETY ZONE</text>
+
+        ${bedBox(store.beds[0], 26, 40)}
+        ${bedBox(store.beds[1], 196, 40)}
+        ${bedBox(store.beds[2], 366, 40)}
+        ${bedBox(store.beds[3], 196, 190)}
+        ${bedBox(store.beds[4], 366, 190)}
+
+        <rect x="26" y="190" width="150" height="128" rx="7" fill="#0d1117" stroke="#0369a1" stroke-width="1.4"/>
+        <text x="36" y="212" fill="#8b9aab" font-size="10" font-weight="700">CLEAN UTILITY</text>
+        <text x="36" y="232" fill="#5a6875" font-size="9.5">Consumables · PPE</text>
+        <text x="36" y="250" fill="#5a6875" font-size="9.5">No data cabling</text>
+        <text x="36" y="290" fill="#5a6875" font-size="9.5">Reorder alerts feed</text>
+        <text x="36" y="304" fill="#5a6875" font-size="9.5">the HMS stores system</text>
+
+        <rect x="536" y="40" width="200" height="278" rx="7" fill="#0d1a14" stroke="#047857" stroke-width="1.6"/>
+        <text x="548" y="62" fill="#35e07a" font-size="11.5" font-weight="700">CENTRAL NURSE STATION</text>
+        <text x="548" y="82" fill="#5a6875" font-size="9.5">Sightline to all five beds</text>
+        ${[['VIEW STATION', '5 beds · trends · alarm list'], ['HUB SERVER', 'RAID 1 · 1 kVA UPS'], ['MANAGED SWITCH', 'dedicated VLAN only']]
+          .map(([t, s], i) => `
+          <rect x="548" y="${96 + i * 72}" width="176" height="60" rx="4" fill="#0a0f15" stroke="#1e2833"/>
+          <text x="558" y="${116 + i * 72}" fill="#8b9aab" font-size="10" font-weight="700">${t}</text>
+          <text x="558" y="${132 + i * 72}" fill="#5a6875" font-size="9">${s}</text>`).join('')}
+
+        <rect x="756" y="40" width="204" height="128" rx="7" fill="#1a1206" stroke="#a16207" stroke-width="1.4"/>
+        <text x="768" y="62" fill="#ffb03a" font-size="10.5" font-weight="700">MEDICAL IT SUPPLY</text>
+        <text x="768" y="82" fill="#8b9aab" font-size="9.5">Isolating transformer</text>
+        <text x="768" y="98" fill="#8b9aab" font-size="9.5">Insulation monitoring</text>
+        <text x="768" y="114" fill="#5a6875" font-size="9">IEC 61557-8</text>
+        <text x="768" y="136" fill="#5a6875" font-size="9">Equipotential bonding</text>
+        <text x="768" y="152" fill="#5a6875" font-size="9">stud at every bed head</text>
+
+        <rect x="756" y="190" width="204" height="128" rx="7" fill="#1a0d0d" stroke="#b91c1c" stroke-width="1.4" stroke-dasharray="6 4"/>
+        <text x="768" y="212" fill="#ff6b6b" font-size="10.5" font-weight="700">EM ZONE</text>
+        <text x="768" y="232" fill="#8b9aab" font-size="9.5">Electrosurgical source sits</text>
+        <text x="768" y="246" fill="#8b9aab" font-size="9.5">outside the ward envelope.</text>
+        <text x="768" y="266" fill="#5a6875" font-size="9">40–50 V/m at 1 m</text>
+        <text x="768" y="282" fill="#5a6875" font-size="9">Separation is the primary</text>
+        <text x="768" y="296" fill="#5a6875" font-size="9">control, not filtering.</text>
+        <text x="768" y="312" fill="#5a6875" font-size="9">Shielded segregated data trunk</text>
+
+        <path d="M 640 336 L 640 372 L 101 372 L 101 172" stroke="#7c3aed" stroke-width="3.5" fill="none"/>
+        <path d="M 640 336 L 640 372 L 271 372 L 271 172" stroke="#7c3aed" stroke-width="3.5" fill="none"/>
+        <path d="M 640 336 L 640 372 L 441 372 L 441 172" stroke="#7c3aed" stroke-width="3.5" fill="none"/>
+        <path d="M 640 336 L 640 372 L 271 372 L 271 322" stroke="#7c3aed" stroke-width="3.5" fill="none"/>
+        <path d="M 640 336 L 640 372 L 441 372 L 441 322" stroke="#7c3aed" stroke-width="3.5" fill="none"/>
+        <text x="540" y="390" fill="#a78bfa" font-size="9.5" font-weight="700">SEGREGATED SHIELDED DATA TRUNK</text>
+
+        <rect x="26" y="410" width="934" height="36" fill="#0d1117" stroke="#1e2833"/>
+        <text x="38" y="433" fill="#5a6875" font-size="9.5">Corridor · 1.8 m clear width · bed extraction without turning</text>
+        <text x="948" y="433" fill="#5a6875" font-size="9.5" text-anchor="end">9.6 m × 7.2 m internal · 69.1 m² over 5 beds</text>
+      </svg>
+    </div>
+  </div>`;
+}
+
+/* ------------------------------------------------------------ standards */
+
+function renderStandards() {
+  const rows = [
+    ['IEC 60601-1', '2005+A1:2012+A2:2020 (Ed. 3.2)', 'General requirements; basic safety and essential performance'],
+    ['IEC 60601-1-2', '2014+A1:2020 (Ed. 4.1)', 'EMC. Environment tiers — professional healthcare facility declared'],
+    ['IEC 60601-1-8', '2006+A1:2012+A2:2020 (Ed. 2.2)', 'Alarm systems. Governs the distributed alarm system'],
+    ['IEC 80601-2-49', '2018+A1:2024 (Ed. 1.1)', 'Multifunction patient monitors — primary particular standard'],
+    ['IEC 60601-2-27', '2011 (Ed. 3.0)', 'ECG monitoring. Not 60601-2-25, which covers diagnostic reports'],
+    ['IEC 80601-2-30', '2018 (Ed. 2.0)', 'Automated sphygmomanometers. Renumbered from 60601-2-30'],
+    ['ISO 80601-2-61', '2026 (Ed. 3.0)', 'Pulse oximetry. Excludes remote slave displays — the nurse station'],
+    ['ISO 80601-2-56', '2017+A1:2018 (Ed. 2)', 'Clinical thermometers'],
+    ['IEC 62304', '2006+A1:2015 (Ed. 1.1)', 'Software lifecycle. Hub and alarm engine are class C'],
+    ['IEC 62366-1', '2015+A1:2020 (Ed. 1.1)', 'Usability engineering for the five-patient display'],
+    ['ISO 14971', '2019', 'Risk management'],
+    ['IEC 60364-7-710', '2021 (Ed. 2.0)', 'Medical-location electrical installation'],
+    ['IEC 60601-2-2', '2017+A1:2023 (Ed. 6.1)', 'HF surgical equipment — the EMI source, not a PMS requirement'],
+  ];
+  $('#standards').innerHTML = `
+  <div class="card">
+    <div class="card__hd">Standards register <span style="color:var(--fg-faint);text-transform:none">— verified current at 19 Oct 2026</span></div>
+    <div class="card__bd" style="padding:0">
+      <table>
+        <thead><tr><th style="width:170px">Standard</th><th style="width:250px">Edition</th><th>Role in this design</th></tr></thead>
+        <tbody>${rows.map(r => `<tr><td><code>${r[0]}</code></td><td class="mono">${r[1]}</td><td>${r[2]}</td></tr>`).join('')}</tbody>
+      </table>
+    </div>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <div class="card__hd">Deviations applied deliberately</div>
+      <div class="card__bd">
+        <dl class="kv">
+          <dt>60601-2-25 → 60601-2-27</dt><dd>The diagnostic ECG standard explicitly excludes cardiac monitors.</dd>
+          <dt>60601-2-30 → 80601-2-30</dt><dd>The 60601 number no longer exists.</dd>
+          <dt>80601-2-49 added</dt><dd>Absent from the brief; the most relevant particular standard.</dd>
+          <dt>60601-1-11 excluded</dt><dd>Triggered by home-healthcare use. A ward is not that.</dd>
+          <dt>"De-health"</dt><dd>No such standard exists. Read as digital health or de-identification.</dd>
+        </dl>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card__hd">Alarm obligations discharged by this build</div>
+      <div class="card__bd">
+        <dl class="kv">
+          <dt>Grading</dt><dd>Four-value priority set, IEC 60601-1-8 Table 1</dd>
+          <dt>Hysteresis</dt><dd>Deadband prevents limit-flapping re-alarms</dd>
+          <dt>Escalation</dt><dd>High-priority alarm unattended &gt; 45 s escalates</dd>
+          <dt>Attribution</dt><dd>Acknowledgement records the identified operator</dd>
+          <dt>Information signals</dt><dd>Generated, but never routed as alarms</dd>
+          <dt>Latency</dt><dd>Budget stated in report §4.4</dd>
+        </dl>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ----------------------------------------------------------------- scope */
+
+async function renderScope() {
+  const host = $('#scope');
+  try {
+    // Imported as a module rather than fetched: a fetch of a sibling file is
+    // blocked under the file:// origin, which would silently break the
+    // standalone build. Generated by "npm run scope:write".
+    const data = SCOPE_DATA;
+
+    const summary = `
+    <div class="grid3">
+      ${[['Goals', data.goalSummary], ['Milestones', data.milestoneSummary], ['Phases', data.phaseSummary]]
+        .map(([label, s]) => `
+        <div class="card"><div class="card__hd">${label}</div>
+          <div class="card__bd">
+            <div style="font-size:28px;font-weight:700;font-family:var(--mono);
+                        color:${s.missing ? 'var(--high)' : 'var(--ok)'}">${s.satisfied}<span style="font-size:15px;color:var(--fg-faint)">/${s.total}</span></div>
+            <div style="font-size:11px;color:var(--fg-dim);margin-top:4px">${s.missing ? `${s.missing} unsatisfied` : 'all satisfied'}</div>
+            <div class="bar"><i style="width:${(s.satisfied / s.total * 100).toFixed(0)}%;background:${s.missing ? 'var(--high)' : 'var(--ok)'}"></i></div>
+          </div>
+        </div>`).join('')}
+    </div>`;
+
+    const table = (rows, cols) => `
+    <div class="card"><div class="card__bd" style="padding:0">
+      <table>
+        <thead><tr>${cols.map(c => `<th${c.w ? ` style="width:${c.w}"` : ''}>${c.h}</th>`).join('')}</tr></thead>
+        <tbody>${rows.map(r => `<tr>${r.cells.map((cell, i) => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody>
+      </table>
+    </div></div>`;
+
+    host.innerHTML = summary
+      + table(data.goals.map(g => ({ cells: [
+          `<span class="mono">${g.id}</span>`, g.goal, g.evidence.map(e => `<div><code>${e.file}</code>${e.note ? ` <span style="color:var(--fg-faint)">${e.note}</span>` : ''}</div>`).join(''),
+          `<span class="pill pill--${g.ok ? 'ok' : 'no'}">${g.ok ? 'satisfied' : 'gap'}</span>`] })),
+        [{ h: 'Goal', w: '56px' }, { h: 'Objective' }, { h: 'Evidence' }, { h: 'Status', w: '110px' }])
+      + table(data.milestones.map(m => ({ cells: [
+          `<span class="mono">${m.id}</span>`, m.name, m.deliverable,
+          m.evidence.map(e => `<div><code>${e.file}</code></div>`).join('') || '<span style="color:var(--fg-faint)">—</span>',
+          `<span class="pill pill--${m.ok ? 'ok' : 'no'}">${m.ok ? 'satisfied' : 'gap'}</span>`] })),
+        [{ h: 'ID', w: '56px' }, { h: 'Milestone' }, { h: 'Deliverable', w: '260px' }, { h: 'Evidence' }, { h: 'Status', w: '110px' }]);
+  } catch (e) {
+    host.innerHTML = `<div class="card"><div class="card__hd">Scope coverage</div>
+      <div class="card__bd" style="color:var(--fg-dim)">Run <code>node tools/scope-audit.mjs</code> to generate <code>frontend/js/scope.json</code>.</div></div>`;
+  }
+}
+
+/* ------------------------------------------------------------- audio UI */
+
+function renderAudioState() {
+  const state = !audio.enabled ? 'off' : audio.alarmState;
+  const el = $('#audioState');
+  const label = { live: 'live', paused: 'paused', off: audio.enabled ? 'silenced' : 'off' }[state];
+  el.dataset.state = state;
+  el.textContent = label;
+
+  const btn = $('#audioToggle');
+  btn.dataset.on = String(audio.enabled);
+  btn.textContent = audio.enabled ? 'Audio on' : 'Enable audio';
+
+  const paused = audio.alarmState === 'paused';
+  $('#audioPause').textContent = paused
+    ? `Resume (${Math.max(0, Math.round((audio.pausedUntil - Date.now()) / 1000))}s)`
+    : 'Pause 2 min';
+  $('#audioPause').classList.toggle('muted', !audio.enabled);
+  $('#audioOff').classList.toggle('muted', !audio.enabled);
+}
+
+function wireAudio() {
+  $('#audioToggle').addEventListener('click', async () => {
+    // Must be a user gesture: browsers refuse to start an AudioContext otherwise.
+    const on = await audio.toggle();
+    if (on) audio.audition('MEDIUM');   // confirm it works
+    renderAudioState();
+  });
+
+  $('#audioVol').addEventListener('input', e => {
+    // The alarm bus is the loudest thing the station produces; the control is
+    // a level trim, not the only stage of gain.
+    settings.master = Number(e.target.value) / 100;
+    audio.setMaster(settings.master);
+    saveSettings();
+  });
+
+  $('#pulseVol').addEventListener('input', e => {
+    settings.pulse = Number(e.target.value) / 100;
+    audio.pulseVol = settings.pulse;
+    saveSettings();
+  });
+
+  $('#toneBed').addEventListener('change', e => {
+    settings.toneBed = e.target.value;
+    audio.toneBedId = settings.toneBed === 'none' ? null : settings.toneBed;
+    audio.pulseOn = settings.toneBed !== 'none';
+    saveSettings();
+  });
+
+  $('#auditionCat').addEventListener('change', e => {
+    settings.category = e.target.value;
+    saveSettings();
+  });
+
+  document.addEventListener('click', async e => {
+    const a = e.target.closest('[data-audition]');
+    if (a) {
+      await audio.audition(a.dataset.audition, settings.category);
+      return;
+    }
+    if (e.target.id === 'auditionPulse') await audio.auditionPulse();
+  });
+
+  $('#audioPause').addEventListener('click', () => {
+    if (!audio.enabled) return;
+    if (audio.alarmState === 'paused') audio.resumeAlarms();
+    else audio.pauseAlarms(120);
+    renderAudioState();
+  });
+
+  $('#audioOff').addEventListener('click', () => {
+    if (!audio.enabled) return;
+    audio.muteAlarms();
+    renderAudioState();
+  });
+
+  renderAudioState();
+}
+
+/** Announce newly raised alarms, and stop sounds for resolved ones. */
+function syncAlarmAudio() {
+  const live = new Set();
+
+  for (const a of store.alarms) {
+    live.add(a.id);
+    if (audio._announced.has(a.id)) continue;
+    audio._announced.add(a.id);
+    if (!a.clearedAt) {
+      audio.alarm(a);
+      if (a.priority !== 'INFORMATION') announce(a);
+    }
+  }
+
+  for (const id of [...audio._announced]) {
+    if (!live.has(id)) {
+      audio._announced.delete(id);
+      audio.stopAlarm(id);
+    }
+  }
+}
+
+/** Fire the pulse pip when the electrocardiogram phase wraps (the R-wave). */
+function syncPulseTone() {
+  if (!audio.enabled) return;
+  for (const bed of store.beds) {
+    if (!bed.occupied) continue;
+    const last = audio._lastPhase.get(bed.id);
+    const now = bed.phase.ecg;
+    if (last !== undefined && now < last) audio.pulse(bed);
+    audio._lastPhase.set(bed.id, now);
+  }
+}
+
+/* -------------------------------------------------- settings persistence */
+
+const SETTINGS_KEY = 'pms.settings.v1';
+
+const DEFAULTS = {
+  view: 'dashboard',
+  master: 0.85,
+  pulse: 0.45,
+  toneBed: 'bed-001',
+  category: 'cardiovascular',
+  railOpen: false,
+};
+
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    return raw ? { ...DEFAULTS, ...JSON.parse(raw) } : { ...DEFAULTS };
+  } catch {
+    // Private browsing, disabled storage, or corrupt value. Defaults are fine.
+    return { ...DEFAULTS };
+  }
+}
+
+function saveSettings() {
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  } catch { /* storage unavailable; the session still works, just not remembered */ }
+}
+
+let settings = loadSettings();
+
+function applySettings() {
+  audio.setMaster(settings.master);
+  audio.pulseVol = settings.pulse;
+  audio.toneBedId = settings.toneBed === 'none' ? null : settings.toneBed;
+  audio.pulseOn = settings.toneBed !== 'none';
+  const v = $('#audioVol'); if (v) v.value = String(Math.round(settings.master * 100));
+  const p = $('#pulseVol'); if (p) p.value = String(Math.round(settings.pulse * 100));
+  const t = $('#toneBed'); if (t) t.value = settings.toneBed;
+  const c = $('#auditionCat'); if (c) c.value = settings.category;
+}
+
+/* ------------------------------------------------------- live announcing */
+
+/**
+ * Announce newly raised alarms to assistive technology.
+ *
+ * A canvas trace means nothing to a screen reader, so without this a nurse
+ * using assistive technology would receive no notification of an alarm
+ * condition at all. Assertive because an alarm must interrupt.
+ */
+let announcedCount = 0;
+function announce(alarm) {
+  const live = $('#live');
+  if (!live) return;
+  live.textContent = `${alarm.priority} priority alarm, ${alarm.bedLabel}, ${alarm.message}`;
+  announcedCount++;
+}
+
+/* ------------------------------------------------------------ audit view */
+
+function renderAudit() {
+  const events = store.events;
+  const alarms = store.alarms;
+
+  const counts = alarms.reduce((a, x) => (a[x.priority] = (a[x.priority] || 0) + 1, a), {});
+  const acked = alarms.filter(a => a.acknowledgedAt);
+  const escalated = alarms.filter(a => a.escalationCount > 0);
+
+  $('#audit').innerHTML = `
+  <div class="grid3">
+    <div class="card"><div class="card__hd">Alarm record</div><div class="card__bd">
+      <div style="font-size:26px;font-weight:700;font-family:var(--mono)">${alarms.length}</div>
+      <div style="font-size:11px;color:var(--fg-dim)">${acked.length} acknowledged · ${escalated.length} escalated</div>
+      <div style="margin-top:10px;font-size:11px;color:var(--fg-dim);line-height:1.7">
+        ${Object.entries(counts).map(([k, v]) => `<span class="pill pill--${k === 'HIGH' ? 'no' : k === 'MEDIUM' ? 'part' : 'ok'}">${k} ${v}</span>`).join(' ')}
+      </div>
+    </div></div>
+
+    <div class="card"><div class="card__hd">Alarm latency</div><div class="card__bd">
+      <div style="font-size:11px;color:var(--fg-dim);line-height:1.75">
+        Budget in report §4.4:<br>
+        sensor to detection <b>0.5–1.0 s</b><br>
+        bedside generation <b>≤ 0.2 s</b><br>
+        network transport <b>≤ 0.1 s</b><br>
+        hub annunciation <b>≤ 0.3 s</b><br>
+        <b style="color:var(--fg)">remote annunciation total 1.5–2.5 s</b>
+      </div>
+    </div></div>
+
+    <div class="card"><div class="card__hd">Operator</div><div class="card__bd">
+      <div style="font-size:14px;font-weight:600">${store.operator.name}</div>
+      <div style="font-size:11px;color:var(--fg-dim)">${store.operator.role} · ${store.operator.id}</div>
+      <div style="font-size:11px;color:var(--fg-faint);margin-top:8px;line-height:1.6">
+        Every acknowledgement is attributed. IEC 60601-1-8 requires a
+        tamper-evident record of alarm events.
+      </div>
+    </div></div>
+  </div>
+
+  <div class="card">
+    <div class="card__hd">Event trail <span style="color:var(--fg-faint);text-transform:none;letter-spacing:0">— ${events.length} entries</span></div>
+    <div class="card__bd" style="padding:0">
+      ${events.length ? `<table>
+        <thead><tr><th style="width:88px">Time</th><th style="width:110px">Event</th><th>Detail</th></tr></thead>
+        <tbody>${events.map(e => `<tr>
+          <td class="mono">${e.at.toLocaleTimeString('en-GB')}</td>
+          <td><span class="pill pill--${e.kind === 'alarm' ? 'no' : e.kind === 'escalation' ? 'part' : 'ok'}">${e.kind}</span></td>
+          <td>${e.text}</td></tr>`).join('')}</tbody>
+      </table>` : '<div style="padding:18px;color:var(--fg-faint);font-size:12px">No events recorded yet.</div>'}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card__hd">Alarm log <span style="color:var(--fg-faint);text-transform:none;letter-spacing:0">— full record including resolved conditions</span></div>
+    <div class="card__bd" style="padding:0">
+      ${alarms.length ? `<table>
+        <thead><tr><th style="width:88px">Raised</th><th style="width:74px">Bed</th><th style="width:96px">Priority</th>
+          <th style="width:96px">Kind</th><th>Message</th><th style="width:150px">Acknowledged by</th><th style="width:96px">State</th></tr></thead>
+        <tbody>${alarms.map(a => `<tr>
+          <td class="mono">${new Date(a.raisedAt).toLocaleTimeString('en-GB')}</td>
+          <td class="mono">${a.bedLabel}</td>
+          <td><span class="pill pill--${a.priority === 'HIGH' ? 'no' : a.priority === 'MEDIUM' ? 'part' : 'ok'}">${a.priority}</span></td>
+          <td>${a.kind}</td>
+          <td>${a.message}</td>
+          <td>${a.acknowledgedBy ? a.acknowledgedBy.name : '<span style="color:var(--fg-faint)">—</span>'}</td>
+          <td>${a.clearedAt ? 'cleared' : a.acknowledgedAt ? 'acknowledged' : 'open'}</td>
+        </tr>`).join('')}</tbody>
+      </table>` : '<div style="padding:18px;color:var(--fg-faint);font-size:12px">No alarms recorded yet.</div>'}
+    </div>
+  </div>`;
+}
+
+/* ------------------------------------------------------------ animation */
+
+function bindWaves() {
+  for (const cv of $('.waves canvas')) {
+    const bed = store.beds.find(b => b.id === cv.dataset.bed);
+    const set = sweeps.get(cv.dataset.bed);
+    const sw = set && set[cv.dataset.kind];
+    if (!sw) continue;
+
+    // An unoccupied bed shows a flat baseline, not a stale trace from
+    // whoever was there before. Leaving the old trace on screen would be
+    // exactly the frozen-reading failure the design has to avoid.
+    if (!bed || !bed.occupied) { sw.reset(); sw.idle(); }
+
+    const ctx = cv.getContext('2d');
+    ctx.globalCompositeOperation = 'copy';
+    ctx.drawImage(sw.cv, 0, 0);
+    ctx.globalCompositeOperation = 'source-over';
+
+    // The ECG gets a measurement grid, as a real monitor does. Drawn on top of
+    // the trace with 'destination-over' so it sits behind the signal.
+    if (cv.dataset.kind === 'ecg' && bed && bed.occupied) {
+      ctx.globalCompositeOperation = 'destination-over';
+      ctx.fillStyle = '#0a0f15';
+      ctx.fillRect(0, 0, cv.width, cv.height);
+      ctx.strokeStyle = '#12211b';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let x = 0; x < cv.width; x += 25) { ctx.moveTo(x + .5, 0); ctx.lineTo(x + .5, cv.height); }
+      for (let y = 0; y < cv.height; y += 8) { ctx.moveTo(0, y + .5); ctx.lineTo(cv.width, y + .5); }
+      ctx.stroke();
+      ctx.globalCompositeOperation = 'source-over';
+    }
+  }
+}
+
+/* Sweep speed, in pixels per second. 62 px/s across a 620 px canvas gives a
+   10-second visible window, matching a 25 mm/s monitor sweep. */
+const SWEEP_HZ = 62;
+
+function paintSweeps(dt) {
+  const step = 1 / SWEEP_HZ;
+  for (const bed of store.beds) {
+    if (!bed.occupied) continue;
+    const set = sweeps.get(bed.id);
+    if (!set) continue;
+    for (const [kind, colour] of [['ecg', '#35e07a'], ['pleth', '#35c8f0'], ['resp', '#b388ff']]) {
+      const sw = set[kind];
+      sw.acc += dt;
+      // Guard the loop: a long tab suspension must not try to catch up with
+      // thousands of samples in one frame.
+      let n = 0;
+      while (sw.acc >= step && n++ < 8) {
+        sw.push(bed.sample(kind, step), colour);
+        sw.acc -= step;
+      }
+      if (sw.acc > step * 8) sw.acc = 0;
+    }
+  }
+  for (const cv of $('.waves canvas')) {
+    const set = sweeps.get(cv.dataset.bed);
+    if (!set) continue;
+    const sw = set[cv.dataset.kind];
+    if (!sw) continue;
+    // 'copy', not 'source-over'. Compositing each frame onto the previous one
+    // accumulates the antialiased trace until it saturates into a solid band
+    // within about a second. This replaces the pixels instead of blending them.
+    const ctx = cv.getContext('2d');
+    ctx.globalCompositeOperation = 'copy';
+    ctx.drawImage(sw.cv, 0, 0);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+}
+
+/* ----------------------------------------------------------------- boot */
+
+const VIEWS = {
+  dashboard: renderDashboard,
+  trends: renderTrends,
+  ward: renderWard,
+  audit: renderAudit,
+  standards: renderStandards,
+  scope: renderScope,
+};
+
+let current = 'dashboard';
+let lastFullRender = 0;
+
+function show(view) {
+  if (!VIEWS[view]) return;
+  current = view;
+  settings.view = view;
+  saveSettings();
+  for (const b of $('.nav button')) b.setAttribute('aria-selected', String(b.dataset.view === view));
+  for (const v of $('.view')) v.hidden = v.id !== `view-${view}`;
+  VIEWS[view]();
+  // Re-enter full-screen the sweep buffers so traces resume from a full canvas.
+  if (view === 'dashboard') bindWaves();
+}
+
+/* ----------------------------------------------------- narrow-screen rail */
+
+function setRail(open) {
+  settings.railOpen = open;
+  saveSettings();
+  const rail = $('#rail');
+  const toggle = $('#railToggle');
+  if (rail) rail.dataset.open = String(open);
+  if (toggle) toggle.setAttribute('aria-expanded', String(open));
+}
+
+function wireRail() {
+  $('#railToggle').addEventListener('click', () => setRail($('#rail').dataset.open !== 'true'));
+  $('#railClose').addEventListener('click', () => setRail(false));
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && $('#rail').dataset.open === 'true') setRail(false);
+  });
+  setRail(settings.railOpen);
+}
+
+/* -------------------------------------------------------- keyboard access */
+
+function wireKeyboard() {
+  // Numeric shortcuts follow the visual order of the nav bar, so what the
+  // operator sees and what they press agree.
+  const VIEWS_KEYS = ['dashboard', 'trends', 'ward', 'audit', 'standards', 'scope'];
+
+  document.addEventListener('keydown', e => {
+    // Never steal keys from a control the operator is actually using.
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA')) return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+    if (e.key >= '1' && e.key <= '6') { show(VIEWS_KEYS[Number(e.key) - 1]); return; }
+
+    if (e.key === 'a' || e.key === 'A') {
+      if (store.open.length) { store.acknowledgeAll(); renderRail(); renderDashboard(); }
+      return;
+    }
+  });
+}
+
+/* ----------------------------------------------------------------- boot */
+
+document.addEventListener('click', e => {
+  const ack = e.target.closest('[data-ack]');
+  if (ack) { store.acknowledge(ack.dataset.ack); renderRail(); renderDashboard(); return; }
+
+  const nav = e.target.closest('.nav button');
+  if (nav) { show(nav.dataset.view); return; }
+
+  if (e.target.id === 'ackAll') { store.acknowledgeAll(); renderRail(); renderDashboard(); return; }
+  if (e.target.id === 'inject') { store.demo('info'); renderRail(); return; }
+
+  const sc = e.target.closest('[data-scenario]');
+  if (sc) { store.demo(sc.dataset.scenario); renderRail(); return; }
+});
+
+setInterval(() => {
+  $('#clock').innerHTML =
+    `${new Date().toLocaleTimeString('en-GB')}<small>${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</small>`;
+}, 1000);
+
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.25, (now - last) / 1000);
+  last = now;
+
+  // Simulate before rendering, and keep the two independent. A rendering
+  // fault must never stop the physiology: a frozen vitals trace presented
+  // as live is exactly the failure mode this system exists to prevent.
+  try {
+    store.step(dt);
+  } catch (e) {
+    console.error('simulation step failed', e);
+  }
+
+  try {
+    syncAlarmAudio();
+    syncPulseTone();
+    if (audio.enabled && audio.tick()) renderAudioState();
+
+    if (current === 'dashboard') {
+      paintSweeps(dt);
+      if (now - lastFullRender > 1000) { renderDashboard(); lastFullRender = now; }
+    } else if (current === 'trends' && now - lastFullRender > 2000) {
+      renderTrends(); lastFullRender = now;
+    } else if (current === 'ward' && now - lastFullRender > 1000) {
+      renderWard(); lastFullRender = now;
+    } else if (current === 'audit' && now - lastFullRender > 2000) {
+      renderAudit(); lastFullRender = now;
+    }
+  } catch (e) {
+    console.error('render failed', e);
+  }
+
+  requestAnimationFrame(frame);
+}
+
+applySettings();
+show(settings.view || 'dashboard');
+wireAudio();
+wireRail();
+wireKeyboard();
+requestAnimationFrame(frame);
+
+// Exposed for the demo console and for automated checks.
+window.PMS = { store, sweeps, show, audio, settings, saveSettings };
+
+</script>
+<script>
+  // Offline support, only meaningful over http(s). A clinical display must not
+  // blank on a dropped link, which is the same reason alarm evaluation is
+  // distributed rather than centralised.
+  if (location.protocol.startsWith('http') && 'serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    });
+  }
+</script>
+  <script>
+    // Offline registration is only meaningful over http(s).
+    if (location.protocol.startsWith('http')) {
+      navigator.serviceWorker && navigator.serviceWorker.register('./sw.js').catch(() => {});
+    }
+  </script>
+</body>
+</html>

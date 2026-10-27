@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="Five-bed centralised patient monitoring system — nurse station, ward layout, standards register and scope coverage.">
+<title>PMS · Nurse Station — ICU-A</title>
+<link rel="stylesheet" href="./app.css">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23070b10'/><path d='M4 16h6l3-8 4 16 3-8h8' stroke='%2335e07a' stroke-width='2.2' fill='none' stroke-linejoin='round'/></svg>">
+</head>
+<body>
+
+<header class="hdr">
+  <div class="hdr__mark">
+    <b>PMS</b><span>Patient Monitoring System</span>
+  </div>
+  <div class="hdr__status">
+    <span><i></i>Gateway</span>
+    <span><i></i>Monitoring VLAN</span>
+    <span><i></i>MQTT broker</span>
+    <span><i></i>FHIR R4 archive</span>
+    <span><i></i>ABDM consent</span>
+  </div>
+  <div class="hdr__clock" id="clock">--:--:--</div>
+</header>
+
+<nav class="nav" role="tablist" aria-label="Views">
+  <button role="tab" data-view="dashboard" aria-selected="true"  aria-controls="view-dashboard">Nurse Station</button>
+  <button role="tab" data-view="trends"    aria-selected="false" aria-controls="view-trends">Trends</button>
+  <button role="tab" data-view="ward"      aria-selected="false" aria-controls="view-ward">Ward</button>
+  <button role="tab" data-view="audit"     aria-selected="false" aria-controls="view-audit">Audit</button>
+  <button role="tab" data-view="standards" aria-selected="false" aria-controls="view-standards">Standards</button>
+  <button role="tab" data-view="scope"     aria-selected="false" aria-controls="view-scope">Scope <span class="badge" id="badge"></span></button>
+</nav>
+
+<div class="scenariobar">
+  <span class="scenariobar__lbl">Demonstration</span>
+  <button data-scenario="desat">SpO₂ → 82%</button>
+  <button data-scenario="tachy">HR → 168</button>
+  <button data-scenario="hypotension">72/44</button>
+  <button data-scenario="technical">Lead off</button>
+  <button data-scenario="info">Info signal</button>
+  <button data-scenario="reset" class="muted">Clear</button>
+  <span class="scenariobar__hint">Operates on BED-01 · deterministic</span>
+</div>
+
+<div class="audiobar">
+  <span class="audiobar__lbl">Audio</span>
+
+  <button id="audioToggle" class="audiobar__power">Enable audio</button>
+
+  <label class="audiobar__field">Level
+    <input type="range" id="audioVol" min="0" max="100" value="85" aria-label="Alarm level">
+  </label>
+
+  <label class="audiobar__field">Pulse
+    <input type="range" id="pulseVol" min="0" max="100" value="45" aria-label="Pulse tone level">
+  </label>
+
+  <span class="audiobar__sep"></span>
+
+  <label class="audiobar__field">Pulse tone
+    <select id="toneBed" aria-label="Bed for the pulse tone">
+      <option value="bed-001">BED-01</option>
+      <option value="bed-003">BED-03</option>
+      <option value="bed-004">BED-04</option>
+      <option value="none">off</option>
+    </select>
+  </label>
+  <button id="auditionPulse" title="Heartbeat pip, two-part">♡</button>
+
+  <span class="audiobar__sep"></span>
+
+  <label class="audiobar__field">Category
+    <select id="auditionCat" aria-label="Alarm category">
+      <option value="cardiovascular">Cardiovascular</option>
+      <option value="oxygenation">Oxygenation</option>
+      <option value="ventilation">Ventilation</option>
+      <option value="temperature">Temperature</option>
+      <option value="general">General</option>
+    </select>
+  </label>
+  <button data-audition="HIGH"   class="swatch swatch--high">High</button>
+  <button data-audition="MEDIUM" class="swatch swatch--medium">Medium</button>
+  <button data-audition="LOW"    class="swatch swatch--low">Low</button>
+
+  <span class="audiobar__sep"></span>
+
+  <button id="audioPause">Pause 2 min</button>
+  <button id="audioOff" class="muted">Silence</button>
+
+  <span class="audiobar__state" id="audioState">off</span>
+</div>
+
+<main class="main">
+  <section class="view" id="view-dashboard">
+    <div class="beds" id="beds"></div>
+  </section>
+
+  <section class="view" id="view-trends" hidden>
+    <div id="trends"></div>
+  </section>
+
+  <section class="view" id="view-ward" hidden>
+    <div id="ward"></div>
+  </section>
+
+  <section class="view" id="view-standards" hidden>
+    <div id="standards"></div>
+  </section>
+
+  <section class="view" id="view-audit" hidden>
+    <div id="audit"></div>
+  </section>
+
+  <section class="view" id="view-scope" hidden>
+    <div id="scope"></div>
+  </section>
+
+  <!--
+    Screen readers get no benefit from a canvas trace, and a nurse using
+    assistive technology must still be told when an alarm condition arises.
+    This region is the announcement channel; it is deliberately off-screen.
+  -->
+  <div id="live" class="sr-only" role="status" aria-live="assertive" aria-atomic="true"></div>
+
+  <aside class="rail" id="rail" aria-label="Alarm list">
+    <div class="rail__hd">
+      <h2>Alarms</h2>
+      <span class="count" id="railCount">all clear</span>
+      <button class="alm__ack" id="ackAll">Ack all</button>
+      <button class="rail__close" id="railClose" aria-label="Hide alarm list">×</button>
+    </div>
+    <div class="rail__list" id="railList"></div>
+    <div class="rail__empty" id="railEmpty">
+      <p>No alarms.</p>
+      <p class="rail__hint">Use the demonstration bar to raise one.</p>
+    </div>
+  </aside>
+</main>
+
+<button class="rail__toggle" id="railToggle" aria-controls="rail" aria-expanded="false">
+  <span class="rail__toggle-badge" id="railToggleBadge">0</span>
+  <span>Alarms</span>
+</button>
+
+<script type="module" src="./js/app.js"></script>
+<script>
+  // Offline support, only meaningful over http(s). A clinical display must not
+  // blank on a dropped link, which is the same reason alarm evaluation is
+  // distributed rather than centralised.
+  if (location.protocol.startsWith('http') && 'serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    });
+  }
+</script>
+</body>
+</html>

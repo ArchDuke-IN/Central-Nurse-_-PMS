@@ -1,0 +1,41 @@
+{
+  "name": "pms-assignment",
+  "version": "1.1.0",
+  "private": false,
+  "description": "5-bed centralised Patient Monitoring System - biomedical engineering assignment with an executable build-and-verify loop",
+  "author": "ArchDuke-IN",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ArchDuke-IN/Central-Nurse-_-PMS.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ArchDuke-IN/Central-Nurse-_-PMS/issues"
+  },
+  "homepage": "https://github.com/ArchDuke-IN/Central-Nurse-_-PMS#readme",
+  "type": "module",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "build": "node tools/loop.mjs --no-build",
+    "loop": "node tools/loop.mjs",
+    "verify": "node verify/verify.mjs",
+    "verify:quiet": "node verify/verify.mjs --quiet",
+    "verify:json": "node verify/verify.mjs --json",
+    "test": "node tools/selftest.mjs",
+    "scope": "node tools/scope-audit.mjs",
+    "scope:write": "node tools/scope-audit.mjs --write",
+    "lint": "node tools/lint-js.mjs",
+    "web": "node tools/build-web.mjs",
+    "smoke": "node tools/smoke.mjs",
+    "serve": "node tools/serve.mjs",
+    "serve:dev": "node tools/serve.mjs --dev",
+    "start": "node tools/build-web.mjs && node tools/serve.mjs",
+    "status": "node -e \"const s=require('./build/status.json');console.log((s.pass?'PASS':'FAIL'),s.errors,'errors,',s.warns,'warnings',s.generatedAt)\"",
+    "ci": "npm run lint && npm run scope:write && npm run loop && npm test && npm run scope && npm run web && npm run smoke",
+    "report": "node tools/loop.mjs --json",
+    "package": "node tools/pack.mjs"
+  },
+  "dependencies": {}
+}

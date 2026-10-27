@@ -1,0 +1,18 @@
+node_modules/
+.npm/
+npm-debug.log*
+
+# Local editor and operating-system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local runtime output
+*.log
+coverage/
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example

@@ -1,0 +1,61 @@
+# PMS nurse station — systemd unit.
+#
+#   sudo cp pms.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now pms
+#
+# The station is expected to be always available: a monitoring display that
+# has gone down is indistinguishable from one where every patient is fine.
+# Restart=always handles a crash, and the unit has no dependencies that could
+# take it down with them.
+
+[Unit]
+Description=PMS nurse station (five-bed centralised patient monitoring system)
+Documentation=file:/opt/pms/DEPLOYMENT.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pms
+Group=pms
+WorkingDirectory=/opt/pms
+
+# Node's own flags first. --max-old-space-size is low deliberately: this
+# process serves static files and must not compete with anything else on the
+# host for memory.
+ExecStart=/usr/bin/node --max-old-space-size=128 tools/serve.mjs --root dist-web --port 8420 --host 0.0.0.0
+
+Restart=always
+RestartSec=2s
+
+# --- hardening ---
+# The process only ever reads from its own directory and opens one listening
+# socket, so everything else can be denied outright.
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+ReadOnlyPaths=/opt/pms
+ReadWritePaths=/nonexistent
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+
+# The console is the product; do not let a memory spike take it down silently.
+MemoryMax=256M
+TasksMax=64
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=pms
+
+[Install]
+WantedBy=multi-user.target

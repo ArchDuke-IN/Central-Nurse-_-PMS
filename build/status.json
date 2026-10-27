@@ -1,0 +1,165 @@
+{
+  "generatedAt": "2026-10-27T02:55:21.885Z",
+  "pass": true,
+  "errors": 0,
+  "warns": 0,
+  "infos": 26,
+  "findings": [
+    {
+      "level": "info",
+      "check": "ucum-unused",
+      "message": "Verified UCUM code {counts}/min never appears.",
+      "file": null
+    },
+    {
+      "level": "info",
+      "check": "ucum-unused",
+      "message": "Verified UCUM code [degF] never appears.",
+      "file": null
+    },
+    {
+      "level": "info",
+      "check": "sql-exec",
+      "message": "Schema executes cleanly under the PostgreSQL->SQLite shim.",
+      "file": "db/01_schema.sql"
+    },
+    {
+      "level": "info",
+      "check": "sql-seed",
+      "message": "Seed data loads cleanly.",
+      "file": "db/02_seed.sql"
+    },
+    {
+      "level": "info",
+      "check": "sql-constraint",
+      "message": "PASS alerts.priority rejects an invalid priority -- rejected: CHECK constraint failed: ck_alerts_priority",
+      "file": null
+    },
+    {
+      "level": "info",
+      "check": "sql-constraint",
+      "message": "PASS vitals_log rejects an impossible heart rate -- rejected: CHECK constraint failed: ck_vitals_hr_plausible",
+      "file": null
+    },
+    {
+      "level": "info",
+      "check": "sql-constraint",
+      "message": "PASS vitals_log rejects a row for a non-existent bed -- rejected: FOREIGN KEY constraint failed",
+      "file": null
+    },
+    {
+      "level": "info",
+      "check": "sql-constraint",
+      "message": "PASS vitals_log rejects SpO2 above 100 percent -- rejected: CHECK constraint failed: ck_vitals_spo2_plausible",
+      "file": null
+    },
+    {
+      "level": "info",
+      "check": "sql-constraint",
+      "message": "PASS vitals_log rejects MAP without derived_from provenance -- rejected: CHECK constraint failed: ck_vitals_derived_provenance",
+      "file": null
+    },
+    {
+      "level": "info",
+      "check": "sql-constraint",
+      "message": "PASS bed_assignments prevents two open occupants of the same bed -- rejected: UNIQUE constraint failed: bed_assignments.bed_id",
+      "file": null
+    },
+    {
+      "level": "info",
+      "check": "sql-constraint",
+      "message": "PASS vitals_log rejects redelivery of an already-stored sample -- rejected: UNIQUE constraint failed: vitals_log.instrument_id, vitals_log.parameter_code, vitals_log.recorded_at",
+      "file": null
+    },
+    {
+      "level": "info",
+      "check": "sql-constraint",
+      "message": "PASS patients rejects a plaintext or malformed ABHA value -- rejected: CHECK constraint failed: ck_patients_abha_envelope",
+      "file": null
+    },
+    {
+      "level": "info",
+      "check": "sql-constraint",
+      "message": "PASS alerts rejects acknowledgement with no staff member -- rejected: CHECK constraint failed: ck_alerts_ack_by_staff",
+      "file": null
+    },
+    {
+      "level": "info",
+      "check": "sql-constraint",
+      "message": "PASS vitals_log accepts a properly provenanced MAP -- accepted as expected",
+      "file": null
+    },
+    {
+      "level": "info",
+      "check": "sql-constraint",
+      "message": "PASS sync_outbox rejects an unrecognised operation -- rejected: CHECK constraint failed: ck_outbox_op",
+      "file": null
+    },
+    {
+      "level": "info",
+      "check": "sql-constraint",
+      "message": "PASS sync_outbox rejects a tombstone on a non-delete operation -- rejected: CHECK constraint failed: ck_outbox_tombstone",
+      "file": null
+    },
+    {
+      "level": "info",
+      "check": "sql-constraint",
+      "message": "PASS sync_outbox accepts a well-formed delete tombstone -- accepted as expected",
+      "file": null
+    },
+    {
+      "level": "info",
+      "check": "sql-constraint",
+      "message": "PASS sync_outbox rejects a tombstone flag on an insert -- rejected: CHECK constraint failed: ck_outbox_tombstone",
+      "file": null
+    },
+    {
+      "level": "info",
+      "check": "sql-index-used",
+      "message": "The nurse-station query for one bed uses ix_vitals_bed_time.",
+      "file": "db/01_schema.sql"
+    },
+    {
+      "level": "info",
+      "check": "sql-fence",
+      "message": "Embedded SQL block 1 executes against the seeded schema.",
+      "file": "report/05_data_model.md"
+    },
+    {
+      "level": "info",
+      "check": "sql-fence",
+      "message": "Embedded SQL block 2 executes against the seeded schema.",
+      "file": "report/05_data_model.md"
+    },
+    {
+      "level": "info",
+      "check": "sql-fence",
+      "message": "Embedded SQL block 3 executes against the seeded schema.",
+      "file": "report/05_data_model.md"
+    },
+    {
+      "level": "info",
+      "check": "sql-fence",
+      "message": "Embedded SQL block 4 executes against the seeded schema.",
+      "file": "report/05_data_model.md"
+    },
+    {
+      "level": "info",
+      "check": "sql-fence",
+      "message": "Embedded SQL block 5 executes against the seeded schema.",
+      "file": "report/05_data_model.md"
+    },
+    {
+      "level": "info",
+      "check": "sql-fence",
+      "message": "Embedded SQL block 6 executes against the seeded schema.",
+      "file": "report/05_data_model.md"
+    },
+    {
+      "level": "info",
+      "check": "fhir-coverage",
+      "message": "Validated 3 FHIR resource(s).",
+      "file": null
+    }
+  ]
+}

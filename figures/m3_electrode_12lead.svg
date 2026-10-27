@@ -1,0 +1,149 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 820" width="760" height="820" font-family="Segoe UI, Arial, sans-serif">
+  <title>Ten-electrode twelve-lead ECG placement with lead labels and anatomical landmarks</title>
+  <desc>Anterior torso view showing right arm, left arm, right leg, left leg and precordial electrodes V1 to V6 in their standard positions, with the resulting twelve leads derived as three Einthoven bipolar leads, three Goldberger augmented leads and six Wilson unipolar precordial leads. Limb electrodes may be relocated to the torso using the Mason-Likar modified system for ambulatory monitoring, subject to documented limitations.</desc>
+  <defs>
+    <style>
+      .body  { fill:#f8fafc; stroke:#334155; stroke-width:2; }
+      .bodyL { fill:#e2e8f0; stroke:#334155; stroke-width:2; }
+      .e     { fill:#ffffff; stroke:#0f172a; stroke-width:2; }
+      .lab   { font-size:11px; fill:#0f172a; font-weight:700; text-anchor:middle; }
+      .lead  { font-size:10.5px; fill:#1d4ed8; font-weight:700; }
+      .t     { font-size:11px; fill:#0f172a; }
+      .ts    { font-size:9.5px; fill:#475569; }
+      .tb    { font-size:13px; fill:#0f172a; font-weight:700; }
+      .gl    { font-size:11px; font-weight:700; fill:#0f172a; letter-spacing:.05em; }
+      .leadG { fill:none; stroke:#94a3b8; stroke-width:1; stroke-dasharray:4 4; }
+    </style>
+  </defs>
+
+  <rect width="760" height="820" fill="#ffffff"/>
+
+  <text class="gl" x="24" y="26">FIGURE 2 — TEN-ELECTRODE TWELVE-LEAD ECG PLACEMENT</text>
+  <text class="ts" x="24" y="43">Anterior view. Ten electrodes yield twelve simultaneous leads. All electrodes are Type CF applied parts.</text>
+
+  <!-- ============ TORSO ============ -->
+  <!-- neck -->
+  <path class="body" d="M 300 70 L 460 70 L 470 120 L 290 120 Z"/>
+  <!-- torso -->
+  <path class="bodyL" d="M 290 120 L 470 120 L 500 250 L 486 430 L 284 430 L 270 250 Z"/>
+  <!-- arms -->
+  <path class="body" d="M 290 130 L 230 175 L 190 300 L 232 316 L 268 220 L 292 190 Z"/>
+  <path class="body" d="M 470 130 L 530 175 L 570 300 L 528 316 L 492 220 L 468 190 Z"/>
+  <!-- sternum guide -->
+  <line x1="380" y1="120" x2="380" y2="300" class="leadG"/>
+  <!-- clavicle guide -->
+  <line x1="295" y1="168" x2="465" y2="168" class="leadG"/>
+  <!-- nipple line guide -->
+  <line x1="272" y1="250" x2="488" y2="250" class="leadG"/>
+
+  <!-- ============ ELECTRODES ============ -->
+  <!-- limb electrodes, upper torso (standard distal placement shown near clavicles for clarity) -->
+  <g>
+    <circle class="e" cx="300" cy="140" r="14"/>
+    <text class="lab" x="300" y="144">RA</text>
+    <circle class="e" cx="460" cy="140" r="14"/>
+    <text class="lab" x="460" y="144">LA</text>
+    <circle class="e" cx="300" cy="176" r="14"/>
+    <text class="lab" x="300" y="180">RL</text>
+    <circle class="e" cx="460" cy="176" r="14"/>
+    <text class="lab" x="460" y="180">LL</text>
+  </g>
+  <text class="ts" x="24" y="132">Limb electrodes drawn on the</text>
+  <text class="ts" x="24" y="146">torso for clarity. In</text>
+  <text class="ts" x="24" y="160">standard placement they</text>
+  <text class="ts" x="24" y="174">sit at the wrists and</text>
+  <text class="ts" x="24" y="188">ankles.</text>
+
+  <!-- precordial -->
+  <g>
+    <circle class="e" cx="350" cy="168" r="14"/>
+    <text class="lab" x="350" y="172">V1</text>
+    <circle class="e" cx="410" cy="168" r="14"/>
+    <text class="lab" x="410" y="172">V2</text>
+    <circle class="e" cx="350" cy="212" r="14"/>
+    <text class="lab" x="350" y="216">V3</text>
+    <circle class="e" cx="345" cy="250" r="14"/>
+    <text class="lab" x="345" y="254">V4</text>
+    <circle class="e" cx="395" cy="250" r="14"/>
+    <text class="lab" x="395" y="254">V5</text>
+    <circle class="e" cx="440" cy="250" r="14"/>
+    <text class="lab" x="440" y="254">V6</text>
+  </g>
+
+  <!-- landmark labels -->
+  <g class="ts" fill="#64748b">
+    <text x="382" y="112" text-anchor="middle">sternal notch</text>
+    <text x="490" y="172">4th ICS, right sternal border</text>
+    <text x="430" y="172">4th ICS, left sternal border</text>
+    <text x="366" y="216">between V2 and V4</text>
+    <text x="290" y="254" text-anchor="end">5th ICS midclavicular</text>
+    <text x="290" y="270" text-anchor="end">same level</text>
+    <text x="290" y="286" text-anchor="end">anterior axillary</text>
+    <text x="290" y="302" text-anchor="end">same level midaxillary</text>
+  </g>
+
+  <!-- ============ DERIVED LEADS ============ -->
+  <g transform="translate(24,330)">
+    <rect x="0" y="0" width="712" height="212" fill="#f8fafc" stroke="#cbd5e1" rx="6"/>
+
+    <text class="gl" x="14" y="22">DERIVED LEADS</text>
+
+    <!-- Einthoven -->
+    <text class="tb" x="14" y="48">Einthoven (bipolar)</text>
+    <text class="ts" x="14" y="66">Heart modelled as a point source at the</text>
+    <text class="ts" x="14" y="80">centre of an equilateral triangle formed by</text>
+    <text class="ts" x="14" y="94">RA, LA and LL. Leads are edge differences.</text>
+    <text class="t" x="14" y="120">I   = LA − RA</text>
+    <text class="t" x="14" y="138">II  = LL − RA</text>
+    <text class="t" x="14" y="156">III = LL − LA</text>
+    <text class="ts" x="14" y="178">Einthoven's law: II = I + III</text>
+    <text class="ts" x="14" y="194">RL is a ground reference, driven by the</text>
+    <text class="ts" x="14" y="208">right-leg-drive amplifier, not an earth.</text>
+
+    <!-- Goldberger -->
+    <text class="tb" x="280" y="48">Goldberger (augmented)</text>
+    <text class="ts" x="280" y="66">The equalising resistors are removed and</text>
+    <text class="ts" x="280" y="80">the exploring limb is disconnected, giving</text>
+    <text class="ts" x="280" y="94">a two-limb average.</text>
+    <text class="t" x="280" y="120">aVR = RA − ½(LA + LL)</text>
+    <text class="t" x="280" y="138">aVL = LA − ½(RA + LL)</text>
+    <text class="t" x="280" y="156">aVF = LL − ½(RA + LA)</text>
+    <text class="ts" x="280" y="178">Augmentation is nominally 50 %, but the</text>
+    <text class="ts" x="280" y="194">measured ratio varies both between</text>
+    <text class="ts" x="280" y="208">individuals and between leads. Do not</text>
+    <text class="ts" x="280" y="222">treat V and aV leads as interchangeable.</text>
+
+    <!-- Wilson -->
+    <text class="tb" x="546" y="48">Wilson (unipolar)</text>
+    <text class="ts" x="546" y="66">RA, LA and LL each connect through an</text>
+    <text class="ts" x="546" y="80">equal 5 kΩ resistor to a summing node of</text>
+    <text class="ts" x="546" y="94">near-zero potential.</text>
+    <text class="t" x="546" y="120">Vx = V(x) − WCT</text>
+    <text class="ts" x="546" y="146">For V1–V6 the central terminal omits</text>
+    <text class="ts" x="546" y="160">only RL, so true unipolar recording</text>
+    <text class="ts" x="546" y="174">requires a fourth physical electrode.</text>
+    <text class="ts" x="546" y="198">V1 V2 V3 V4 V5 V6</text>
+  </g>
+
+  <!-- ============ CLINICAL NOTES ============ -->
+  <g transform="translate(24,558)">
+    <rect x="0" y="0" width="712" height="240" fill="#fffbeb" stroke="#b45309" rx="6"/>
+
+    <text class="gl" x="14" y="22" fill="#b45309">CLINICAL NOTES AND LIMITATIONS</text>
+
+    <text class="t" x="14" y="48" font-weight="700">Mason–Likar modification (ambulatory / exercise).</text>
+    <text class="ts" x="14" y="66">Relocating the limb electrodes to the torso suppresses myoelectric noise during</text>
+    <text class="ts" x="14" y="80">exercise. The claim that the resulting tracing is identical to distal placement</text>
+    <text class="ts" x="14" y="94">is not supported: measured differences include a rightward shift of the mean</text>
+    <text class="ts" x="14" y="108">QRS axis, reduced R-wave amplitude in leads I and aVL, increased amplitude in</text>
+    <text class="ts" x="14" y="122">II, III and aVF, and inferior Q waves that may be masked. This accounts for the</text>
+    <text class="ts" x="14" y="136">high false-negative rate for inferior-wall ischaemia on exercise testing.</text>
+    <text class="t" x="14" y="158" font-weight="700">Consequence: a serial ECG recorded with relocated electrodes cannot be compared</text>
+    <text class="ts" x="14" y="174">with one recorded in standard placement, and the modification used must be</text>
+    <text class="ts" x="14" y="188">recorded on the trace itself.</text>
+
+    <text class="t" x="14" y="214" font-weight="700">Electrode preparation.</text>
+    <text class="ts" x="14" y="230">Intact stratum corneum presents roughly 50 kΩ/cm². Mild abrasion reduces this below</text>
+    <text class="ts" x="14" y="244">5 kΩ/cm² and is the single highest-value operator step for artefact control.</text>
+  </g>
+</svg>
